@@ -118,22 +118,32 @@ void multiply_outer(unsigned int* a, unsigned int* b, unsigned int* t, unsigned 
 
 	long index_outer, index_inner, rdi;
 
-	for(index_outer = 0; index_outer < DIGITS; index_outer += 8){
+	for(index_outer = 0; index_outer < DIGITS; index_outer += 16){
 
 		__asm__ volatile(
 			// load b[i] ... b[i+7]
-			"vmovdqu (%0, %5, 4), %%ymm1;"
+			"vmovdqu32 (%0, %1, 4), %%zmm1;"
 	
 			// load t[8-15], u[8-15], u[0-7], t[0-7], respectively
-			"vmovdqu 32(%3, %5, 8), %%ymm4;" //latter v
-			"vmovdqu 32(%4, %5, 8), %%ymm5;" //latter w
-			"vmovdqu 32(%2, %5, 8), %%ymm6;" //latter u
-			"vmovdqu 32(%1, %5, 8), %%ymm7;" //latter t
-			"vmovdqu (%3, %5, 8), %%ymm8;" //former v
-			"vmovdqu (%4, %5, 8), %%ymm9;" //former w
-			"vmovdqu (%2, %5, 8), %%ymm10;" //former u
-			"vmovdqu (%1, %5, 8), %%ymm11;" //former t
-			::"r"(b), "r"(t), "r"(u), "r"(v), "r"(w), "r"(index_outer)
+			"vmovdqu64 64(%2, %1, 8), %%zmm4;" //latter t
+			"vmovdqu64 64(%3, %1, 8), %%zmm5;" //latter u
+			"vmovdqu64 64(%4, %1, 8), %%zmm6;" //latter v
+			"vmovdqu64 64(%5, %1, 8), %%zmm7;" //latter w
+			"vmovdqu64 64(%6, %1, 8), %%zmm8;" //latter p
+			"vmovdqu64 64(%7, %1, 8), %%zmm9;" //latter q
+			"vmovdqu64 64(%8, %1, 8), %%zmm10;" //latter r
+			"vmovdqu64 64(%9, %1, 8), %%zmm11;" //latter s
+
+			"vmovdqu64 (%2, %1, 8), %%zmm12;" //former t
+			"vmovdqu64 (%3, %1, 8), %%zmm13;" //former u
+			"vmovdqu64 (%4, %1, 8), %%zmm14;" //former v
+			"vmovdqu64 (%5, %1, 8), %%zmm15;" //former w
+			"vmovdqu64 (%6, %1, 8), %%zmm16;" //former p
+			"vmovdqu64 (%7, %1, 8), %%zmm17;" //former q
+			"vmovdqu64 (%8, %1, 8), %%zmm18;" //former r
+			"vmovdqu64 (%9, %1, 8), %%zmm19;" //former s
+
+			::"r"(b), "r"(index_outer), "r"(t), "r"(u), "r"(v), "r"(w), "r"(p), "r"(q), "r"(r), "r"(s)
 		);
 
 
@@ -142,11 +152,15 @@ void multiply_outer(unsigned int* a, unsigned int* b, unsigned int* t, unsigned 
 		rdi = index_inner + index_outer;
 
 		__asm__ volatile(
-			"vmovdqu %%ymm11, 64(%0, %4, 8);"
-			"vmovdqu %%ymm10, 64(%1, %4, 8);"	
-			"vmovdqu %%ymm8, 64(%2, %4, 8);"
-			"vmovdqu %%ymm9, 64(%3, %4, 8);"
-			::"r"(t), "r"(u), "r"(v), "r"(w), "r"(rdi)
+			"vmovdqu64 %%zmm12, 128(%1, %0, 8);"
+			"vmovdqu64 %%zmm13, 128(%2, %0, 8);"	
+			"vmovdqu64 %%zmm14, 128(%3, %0, 8);"
+			"vmovdqu64 %%zmm15, 128(%4, %0, 8);"
+			"vmovdqu64 %%zmm16, 128(%5, %0, 8);"
+			"vmovdqu64 %%zmm17, 128(%6, %0, 8);"	
+			"vmovdqu64 %%zmm18, 128(%7, %0, 8);"
+			"vmovdqu64 %%zmm19, 128(%8, %0, 8);"
+			::"r"(rdi), "r"(t), "r"(u), "r"(v), "r"(w), "r"(p), "r"(q), "r"(r), "r"(s)
 		);
 	}
 }
