@@ -1,16 +1,15 @@
 #!/bin/sh
 
 N=14
-loop=100
+loop=$1
 st=15	#115
-en=114	#214
+en=`expr $loop + 14`	#214
 
 ### initialize ###
 
 cat hoge > zmm_mul.h
 
 echo "N,Optimized,Normal,GMP">measure.csv
-#echo "1,=average(A15:A114),=average(B15:B114),=average(C15:C114)">>measure.csv
 i=1
 while [ $i -lt $N ]
 do
@@ -39,8 +38,7 @@ do
 	cat hoge | sed "s/128 \* 1/128 \* $outer/" > zmm_mul.h
 	make clean all
 done
-mv measure.csv data/mac_0917
+mv measure.csv data/
 make clean
-say "ミッションコンプリート"
 
 
