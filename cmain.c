@@ -13,6 +13,11 @@ void gmp_mul();
 
 int main(int argc, char** argv){
 
+	if(argc != 2){
+		printf("Usage : %s num\n", argv[0]);
+		exit(0);
+	}
+
     unsigned int* data_a = calloc((N+4), sizeof(int));
     unsigned int* data_b = calloc((N+4), sizeof(int));
     unsigned int* A = calloc((N+4), sizeof(int));
@@ -23,9 +28,6 @@ int main(int argc, char** argv){
     unsigned int* a = calloc((M+8),sizeof(int));
     unsigned int* b = calloc((M+8),sizeof(int));
     unsigned int* t = calloc((2*M+8),sizeof(long));
-    //unsigned int* u = calloc((2*M+8),sizeof(long));
-    //unsigned int* v = calloc((2*M+8),sizeof(long));
-    //unsigned int* w = calloc((2*M+8),sizeof(long));
     
 
     if(!(result_t && data_a && data_b && a && b && t && A && B && T)){
@@ -44,14 +46,11 @@ int main(int argc, char** argv){
     struct timeval s, e;
     double total = 0.0;
     double time = 0.0;
-	//FILE *file = fopen("measure.csv", "w");
-	//fprintf(file, "Optimized,Normal\n");
-	//printf("Optimized,Normal,GMP\n");
 
     // optimized multiply
     for(i=0; i<30; i++){
 	
-	    //for(j=0; j<2*(2*M+1); j++) t[j] = u[j] = v[j] = w[j]  = 0;
+	    for(j=0; j<2*(2*M+1); j++) t[j] = 0;
 
     	gettimeofday(&s, NULL);
 	    split_29bit(data_a, a, MDIGITS);
@@ -69,11 +68,9 @@ int main(int argc, char** argv){
     time = (total / 30.0) * 1000 * 1000;
     printf("%lf,", time);
     //printf("\nOptimized\t: Average time = %lf [us]\n", time);
-	//fprintf(file, "%lf,", time);
-    total = 0.0;
     
-	//for(j=0; j<2*(2*M+1); j++) t[j] = u[j] = v[j] = w[j]  = 0;
-
+	total = 0.0;
+    
     // normal multiply 
     for(i=0; i<30; i++){
         for(j=0; j<(2*N+1); j++) T[j] = 0;
@@ -88,8 +85,6 @@ int main(int argc, char** argv){
     time = (total / 30.0) * 1000 * 1000;
     printf("%lf,", time);
     //printf("Normal\t\t: Average time = %lf [us]\n", time);
-	//fprintf(file, "%lf\n", time);
-    
 
 	// use GMP
 	gmp_mul(argv[1]);
@@ -105,16 +100,12 @@ int main(int argc, char** argv){
 			flag = 1;
 		}
     }
-    //if(!flag) puts("-------- No Error --------");
+    if(!flag) puts("-------- No Error --------");
 
 
-	//fclose(file);
     free(a);
     free(b);
     free(t);
-    //free(u);
-    //free(v);
-    //free(w);
     free(A);
     free(B);
     free(T);
