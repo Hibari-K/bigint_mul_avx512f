@@ -63,34 +63,39 @@ void multiply(unsigned int* a, unsigned int* b, unsigned int* t){
 		puts("malloc error");
 		exit(1);
 	}
-	
-	// ready for multiply_outer
-	__asm__ volatile(
-	// make ymm12 = 03020100
-	"mov $2, %%esi;"
-	"movd %%esi, %%xmm14;"
-	"inc %%esi;"
-	"movd %%esi, %%xmm15;"
-	"movlhps %%xmm15, %%xmm14;"
-	"psrlq $1, %%xmm15;"
-	"pslldq $8, %%xmm15;"
-	"vinserti128 $1, %%xmm14, %%ymm15, %%ymm12;"
 
-	// make ymm13 = 04040404
-    // and make ymm12 = 07060504 (ymm12 + ymm13)
-    // and make ymm14 = 01010101
-	"mov $4, %%esi;"
-	"movd %%esi, %%xmm14;"
-	"vpbroadcastq %%xmm14, %%ymm13;" // ymm13 = 04040404
-	"vpaddq %%ymm13, %%ymm12, %%ymm12;" // ymm12 = 07060504
+	long step1[8], step2[8];
+	long repeat1[8], repeat2[8], repeat3[8], repeat4[8], repeat5[8];
+
+	int i;
+	for(i=0; i<8; i++)	step1[i] = i;
+	for(i=0; i<8; i++)	step2[i] = i+8;
 	
-    "mov $1, %%esi;"
-	"movd %%esi, %%xmm14;"
-	"vpbroadcastq %%xmm14, %%ymm14;" // ymm14 = 01010101
-	:::"%rsi"
+	for(i=0; i<8; i++)	repeat1[i] = 1;
+	for(i=0; i<8; i++)	repeat2[i] = 2;
+	for(i=0; i<8; i++)	repeat3[i] = 4;
+	for(i=0; i<8; i++)	repeat4[i] = 8;
+	for(i=0; i<8; i++)	repeat5[i] = 13;
+
+	// make zmm20 = 0706050403020100 and,
+	// make zmm21 = 0f0e0d0c0b0a0908
+	__asm__ volatile(
+		"vmovdqu64 %0, %%zmm20;"
+		"vmovdqu64 %1, %%zmm21;"
+		::"m"(step1), "m"(step2)
 	);
 
+	// make repeat number
+	__asm__ volatile(
+		"vmovdqu64 %0, %%zmm22;"
+		"vmovdqu64 %1, %%zmm23;"
+		"vmovdqu64 %2, %%zmm24;"
+		"vmovdqu64 %3, %%zmm25;"
+		"vmovdqu64 %4, %%zmm26;"
+		::"m"(repeat1), "m"(repeat2), "m"(repeat3), "m"(repeat4), "m"(repeat5)
+	);
 
+	
 	multiply_outer(a, b, t, u, v, w, p, q, r, s);
 
 	//Finally, we do the 29bit carry calculation
