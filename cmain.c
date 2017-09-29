@@ -7,6 +7,10 @@
 
 void combine_29bit(unsigned int* data, unsigned int* result);
 void split_29bit(unsigned int* data, unsigned int* result, int digits);
+
+void combine_28bit(unsigned int* data, unsigned int* result, int digits);
+void split_28bit(unsigned int* data, unsigned int* result, int digits);
+
 void multiply(unsigned int* a, unsigned int* b, unsigned int* t);
 void BigMultiply(unsigned int* A, unsigned int* B, unsigned int* T);
 void gmp_mul();
@@ -53,12 +57,12 @@ int main(int argc, char** argv){
 	    for(j=0; j<2*(2*M+1); j++) t[j] = 0;
 
     	gettimeofday(&s, NULL);
-	    split_29bit(data_a, a, MDIGITS);
-    	split_29bit(data_b, b, MDIGITS);
+	    split_28bit(data_a, a, SPLITDIGITS);
+    	split_28bit(data_b, b, SPLITDIGITS);
 
 	    multiply(a, b, t);
 
-    	combine_29bit(t, result_t);
+    	combine_28bit(t, result_t, COMDIGITS);
 	    gettimeofday(&e, NULL);
 	    
 		total += (e.tv_sec - s.tv_sec) + (e.tv_usec - s.tv_usec)*1.0E-6;

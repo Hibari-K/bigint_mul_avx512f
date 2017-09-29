@@ -31,12 +31,12 @@ void multiply(unsigned int* a, unsigned int* b, unsigned int* t){
 	                      b b b b b b b b g g g g g g g g
 	                    c c c c c c c c f f f f f f f f
 	                  d d d d d d d d e e e e e e e e
-	                P P P P P P P P I I I I I I I I
-	              O O O O O O O O J J J J J J J J
+                    P P P P P P P P I I I I I I I I
+		          O O O O O O O O J J J J J J J J
 	            N N N N N N N N K K K K K K K K
 	          M M M M M M M M L L L L L L L L 
-	        p p p p p p p p i i i i i i i i
-	      o o o o o o o o j j j j j j j j
+		    p p p p p p p p i i i i i i i i
+		  o o o o o o o o j j j j j j j j
 	    n n n n n n n n k k k k k k k k
 	  m m m m m m m m l l l l l l l l
 	  ------------------------------------------------------------
@@ -77,8 +77,8 @@ void multiply(unsigned int* a, unsigned int* b, unsigned int* t){
 	for(i=0; i<8; i++)	repeat4[i] = 8;
 	for(i=0; i<8; i++)	repeat5[i] = 13;
 
-	// make zmm24 = 0706050403020100 and,
-	// make zmm25 = 0f0e0d0c0b0a0908
+	// make zmm20 = 0706050403020100 and,
+	// make zmm21 = 0f0e0d0c0b0a0908
 	__asm__ volatile(
 		"vmovdqu64 %0, %%zmm24;"
 		"vmovdqu64 %1, %%zmm25;"
@@ -359,7 +359,6 @@ long multiply_inner(unsigned int* a, unsigned int* t, unsigned int* u, unsigned 
 		::"r"(s), "r"(index)
 	);
 
-
 	__asm__ volatile(
 		"vpsubq %zmm26, %zmm31, %zmm31;"
 		"vpermd %zmm1, %zmm31, %zmm3;" //0606060606060606
@@ -424,7 +423,7 @@ long multiply_inner(unsigned int* a, unsigned int* t, unsigned int* u, unsigned 
 	);
 
 	__asm__ volatile(
-		"vpaddq %zmm26, %zmm30, %zmm31;"
+		"vpaddq %zmm26, %zmm31, %zmm31;"
 		"vpermd %zmm1, %zmm31, %zmm3;" // 0e0e0e0e0e0e0e0e
 		"vpmuludq %zmm3, %zmm2, %zmm3;" //k
 		"vpaddq %zmm3, %zmm14, %zmm14;"
@@ -470,8 +469,8 @@ long multiply_inner(unsigned int* a, unsigned int* t, unsigned int* u, unsigned 
 	);
 	}
 
-	// subtract extra 16 which is added in "for" expression. 
-	return index_inner - 16;
+	// subtract extra 8 which is added in "for" expression. 
+	return index_inner - 8;
 }
 
 
@@ -489,39 +488,39 @@ void calc_carry(unsigned int* t, unsigned int* u, unsigned int* v, unsigned int*
 	 */
 
 	 __asm__ volatile(
-		"pxor %%mm6, %%mm6;"
+		"pxor %%mm10, %%mm10;"
 		"mov $0x1fffffff, %%eax;"
-		"movd %%eax, %%mm7;"
+		"movd %%eax, %%mm11;"
 		//[0]
 		"movq (%0), %%mm0;"
-		"movq %%mm0, %%mm6;"
-		"pand %%mm7, %%mm0;"
+		"movq %%mm0, %%mm10;"
+		"pand %%mm11, %%mm0;"
 		"movd %%mm0, (%0);"
-		"psrlq $28, %%mm6;"
+		"psrlq $29, %%mm10;"
 		
 		"mov $1, %%rbx;"
 		//[1]
 		"movq (%0, %%rbx, 8), %%mm0;"
 		"movq -8(%1, %%rbx, 8), %%mm1;"
 		"paddq %%mm1, %%mm0;"
-		"paddq %%mm6, %%mm0;"
-		"movq %%mm0, %%mm6;"
-		"pand %%mm7, %%mm6;"
-		"movd %%mm6, (%0, %%rbx, 4);"
-		"psrlq $28, %%mm0;"
+		"paddq %%mm10, %%mm0;"
+		"movq %%mm0, %%mm10;"
+		"pand %%mm11, %%mm10;"
+		"movd %%mm10, (%0, %%rbx, 4);"
+		"psrlq $29, %%mm0;"
 	
 		"inc %%ebx;"
 		//[2]
-		"movq (%0, %%rbx, 8), %%mm6;"
+		"movq (%0, %%rbx, 8), %%mm10;"
 		"movq -8(%1, %%rbx, 8), %%mm1;"
 		"movq -16(%2, %%rbx, 8), %%mm2;"
-		"paddq %%mm1, %%mm6;"
-		"paddq %%mm2, %%mm6;"
-		"paddq %%mm0, %%mm6;"
-		"movq %%mm6, %%mm0;"
-		"pand %%mm7, %%mm0;"
+		"paddq %%mm1, %%mm10;"
+		"paddq %%mm2, %%mm10;"
+		"paddq %%mm0, %%mm10;"
+		"movq %%mm10, %%mm0;"
+		"pand %%mm11, %%mm0;"
 		"movd %%mm0, (%0, %%rbx, 4);"
-		"psrlq $28, %%mm6;"
+		"psrlq $29, %%mm10;"
 
 		"inc %%ebx;"
 		//[3]
@@ -529,31 +528,31 @@ void calc_carry(unsigned int* t, unsigned int* u, unsigned int* v, unsigned int*
 		"movq -8(%1, %%rbx, 8), %%mm1;"
 		"movq -16(%2, %%rbx, 8), %%mm2;"
 		"movq -24(%3, %%rbx, 8), %%mm3;"
-		"paddq %%mm6, %%mm0;"
+		"paddq %%mm10, %%mm0;"
 		"paddq %%mm1, %%mm0;"
 		"paddq %%mm2, %%mm0;"
 		"paddq %%mm3, %%mm0;"
-		"movq %%mm0, %%mm6;"
-		"pand %%mm7, %%mm6;"
-		"movd %%mm6, (%0, %%rbx, 4);"
-		"psrlq $28, %%mm0;"
+		"movq %%mm0, %%mm10;"
+		"pand %%mm11, %%mm10;"
+		"movd %%mm10, (%0, %%rbx, 4);"
+		"psrlq $29, %%mm0;"
 
 		"inc %%ebx;"
 		//[4]
-		"movq (%0, %%rbx, 8), %%mm6;"
+		"movq (%0, %%rbx, 8), %%mm10;"
 		"movq -8(%1, %%rbx, 8), %%mm1;"
 		"movq -16(%2, %%rbx, 8), %%mm2;"
 		"movq -24(%3, %%rbx, 8), %%mm3;"
 		"movq -32(%4, %%rbx, 8), %%mm4;"
-		"paddq %%mm0, %%mm6;"
-		"paddq %%mm1, %%mm6;"
-		"paddq %%mm2, %%mm6;"
-		"paddq %%mm3, %%mm6;"
-		"paddq %%mm4, %%mm6;"
-		"movq %%mm6, %%mm0;"
-		"pand %%mm7, %%mm0;"
+		"paddq %%mm0, %%mm10;"
+		"paddq %%mm1, %%mm10;"
+		"paddq %%mm2, %%mm10;"
+		"paddq %%mm3, %%mm10;"
+		"paddq %%mm4, %%mm10;"
+		"movq %%mm10, %%mm0;"
+		"pand %%mm11, %%mm0;"
 		"movd %%mm0, (%0, %%rbx, 4);"
-		"psrlq $28, %%mm6;"
+		"psrlq $29, %%mm10;"
 
 		"inc %%ebx;"
 		//[5]
@@ -562,38 +561,38 @@ void calc_carry(unsigned int* t, unsigned int* u, unsigned int* v, unsigned int*
 		"movq -16(%2, %%rbx, 8), %%mm2;"
 		"movq -24(%3, %%rbx, 8), %%mm3;"
 		"movq -32(%4, %%rbx, 8), %%mm4;"
-		"movq -40(%5, %%rbx, 8), %%mm5;"
-		"paddq %%mm6, %%mm0;"
+		"movq -40(%4, %%rbx, 8), %%mm5;"
+		"paddq %%mm10, %%mm0;"
 		"paddq %%mm1, %%mm0;"
 		"paddq %%mm2, %%mm0;"
 		"paddq %%mm3, %%mm0;"
 		"paddq %%mm4, %%mm0;"
 		"paddq %%mm5, %%mm0;"
-		"movq %%mm0, %%mm6;"
-		"pand %%mm7, %%mm6;"
-		"movd %%mm6, (%0, %%rbx, 4);"
-		"psrlq $28, %%mm0;"
+		"movq %%mm0, %%mm10;"
+		"pand %%mm11, %%mm10;"
+		"movd %%mm10, (%0, %%rbx, 4);"
+		"psrlq $29, %%mm0;"
 
 		"inc %%ebx;"
 		//[6]
-		"movq (%0, %%rbx, 8), %%mm6;"
+		"movq (%0, %%rbx, 8), %%mm10;"
 		"movq -8(%1, %%rbx, 8), %%mm1;"
 		"movq -16(%2, %%rbx, 8), %%mm2;"
 		"movq -24(%3, %%rbx, 8), %%mm3;"
 		"movq -32(%4, %%rbx, 8), %%mm4;"
-		"movq -40(%5, %%rbx, 8), %%mm5;"
-		"paddq %%mm0, %%mm6;"
-		"paddq %%mm1, %%mm6;"
-		"movq -48(%6, %%rbx, 8), %%mm1;" //r
-		"paddq %%mm2, %%mm6;"
-		"paddq %%mm3, %%mm6;"
-		"paddq %%mm4, %%mm6;"
-		"paddq %%mm5, %%mm6;"
-		"paddq %%mm1, %%mm6;" //r
-		"movq %%mm6, %%mm0;"
-		"pand %%mm7, %%mm0;"
+		"movq -40(%4, %%rbx, 8), %%mm5;"
+		"movq -48(%4, %%rbx, 8), %%mm6;"
+		"paddq %%mm0, %%mm10;"
+		"paddq %%mm1, %%mm10;"
+		"paddq %%mm2, %%mm10;"
+		"paddq %%mm3, %%mm10;"
+		"paddq %%mm4, %%mm10;"
+		"paddq %%mm5, %%mm10;"
+		"paddq %%mm6, %%mm10;"
+		"movq %%mm10, %%mm0;"
+		"pand %%mm11, %%mm0;"
 		"movd %%mm0, (%0, %%rbx, 4);"
-		"psrlq $28, %%mm6;"
+		"psrlq $29, %%mm10;"
 
 		::"r"(t), "r"(u), "r"(v), "r"(w), "r"(p), "r"(q), "r"(r)
 		:"%rax", "%rbx"
@@ -625,42 +624,42 @@ void cloop(unsigned int* t, unsigned int* u, unsigned int* v, unsigned int* w, u
 			"movq -24(%4, %0, 8), %%mm3;"
 			"movq -32(%5, %0, 8), %%mm4;"
 			"movq -40(%6, %0, 8), %%mm5;"
+			"movq -48(%7, %0, 8), %%mm6;"
+			"movq -56(%8, %0, 8), %%mm7;"
 			"paddq %%mm1, %%mm0;"
-			"movq -48(%7, %0, 8), %%mm1;" //r
 			"paddq %%mm2, %%mm0;"
-			"movq -56(%8, %0, 8), %%mm2;" //s
 			"paddq %%mm3, %%mm0;"
 			"paddq %%mm4, %%mm0;"
 			"paddq %%mm5, %%mm0;"
-			"paddq %%mm1, %%mm0;" //r
-			"paddq %%mm2, %%mm0;" //s
 			"paddq %%mm6, %%mm0;"
-			"movq %%mm0, %%mm6;"
-			"pand %%mm7, %%mm6;"
-			"movd %%mm6, (%1, %0, 4);"
-			"psrlq $28, %%mm0;"
+			"paddq %%mm7, %%mm0;"
+			"paddq %%mm10, %%mm0;"
+			"movq %%mm0, %%mm10;"
+			"pand %%mm11, %%mm10;"
+			"movd %%mm10, (%1, %0, 4);"
+			"psrlq $29, %%mm0;"
 
 
-			"movq 8(%1, %0, 8), %%mm6;"
+			"movq 8(%1, %0, 8), %%mm10;"
 			"movq (%2, %0, 8), %%mm1;"
 			"movq -8(%3, %0, 8), %%mm2;"
 			"movq -16(%4, %0, 8), %%mm3;"
 			"movq -24(%5, %0, 8), %%mm4;"
 			"movq -32(%6, %0, 8), %%mm5;"
-			"paddq %%mm1, %%mm6;"
-			"movq -40(%7, %0, 8), %%mm1;" //r
-			"paddq %%mm2, %%mm6;"
-			"movq -48(%8, %0, 8), %%mm2;" //s
-			"paddq %%mm3, %%mm6;"
-			"paddq %%mm4, %%mm6;"
-			"paddq %%mm5, %%mm6;"
-			"paddq %%mm1, %%mm6;" //r
-			"paddq %%mm2, %%mm6;" //s
-			"paddq %%mm0, %%mm6;"
-			"movq %%mm6, %%mm0;"
-			"pand %%mm7, %%mm0;"
+			"movq -40(%7, %0, 8), %%mm6;"
+			"movq -48(%8, %0, 8), %%mm7;"
+			"paddq %%mm1, %%mm10;"
+			"paddq %%mm2, %%mm10;"
+			"paddq %%mm3, %%mm10;"
+			"paddq %%mm4, %%mm10;"
+			"paddq %%mm5, %%mm10;"
+			"paddq %%mm6, %%mm10;"
+			"paddq %%mm7, %%mm10;"
+			"paddq %%mm0, %%mm10;"
+			"movq %%mm10, %%mm0;"
+			"pand %%mm11, %%mm0;"
 			"movd %%mm0, 4(%1, %0, 4);"
-			"psrlq $28, %%mm6;"
+			"psrlq $29, %%mm10;"
 
 			::"r"(i), "r"(t), "r"(u), "r"(v), "r"(w), "r"(p), "r"(q), "r"(r), "r"(s)
 		);
