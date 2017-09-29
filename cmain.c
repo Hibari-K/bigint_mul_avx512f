@@ -18,16 +18,16 @@ int main(int argc, char** argv){
 		exit(0);
 	}
 
-    unsigned int* data_a = calloc((N+4), sizeof(int));
-    unsigned int* data_b = calloc((N+4), sizeof(int));
-    unsigned int* A = calloc((N+4), sizeof(int));
-    unsigned int* B = calloc((N+4), sizeof(int));
-    unsigned int* T = calloc((2*N+4), sizeof(int));
-    unsigned int* result_t = calloc((2*N+4), sizeof(int));
+    unsigned int* data_a = calloc((2*N), sizeof(int));
+    unsigned int* data_b = calloc((2*N), sizeof(int));
+    unsigned int* A = calloc((2*N), sizeof(int));
+    unsigned int* B = calloc((2*N), sizeof(int));
+    unsigned int* T = calloc((4*N), sizeof(int));
+    unsigned int* result_t = calloc((4*N), sizeof(int));
 	
-    unsigned int* a = calloc((M+8),sizeof(int));
-    unsigned int* b = calloc((M+8),sizeof(int));
-    unsigned int* t = calloc((2*M+8),sizeof(long));
+    unsigned int* a = calloc((4*M),sizeof(int));
+    unsigned int* b = calloc((4*M),sizeof(int));
+    unsigned int* t = calloc((4*M),sizeof(long));
     
 
     if(!(result_t && data_a && data_b && a && b && t && A && B && T)){
