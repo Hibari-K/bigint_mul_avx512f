@@ -1,9 +1,11 @@
 #!/bin/sh
 
-N=14
+i=40
+N=55
+
 loop=$1
-st=15	#115
-en=`expr $loop + 14`	#214
+st=`expr $N - $i + 2`	#115
+en=`expr $loop + $st - 1`	#214
 
 ### initialize ###
 
@@ -23,7 +25,7 @@ done
 
 make clean all
 
-outer=1
+outer=40
 while [ $outer -lt $N ]
 do
 	i=0
