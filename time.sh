@@ -11,7 +11,7 @@ en=`expr $loop + $st - 1`	#214
 
 cat hoge > zmm_mul.h
 
-echo "N,Optimized,Normal,GMP">measure.csv
+echo "N,Optimized,gradeSchool,GMP">measure.csv
 i=1
 while [ $i -lt $N ]
 do
