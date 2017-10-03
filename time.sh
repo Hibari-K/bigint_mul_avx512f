@@ -12,7 +12,7 @@ en=`expr $loop + $st - 1`	#214
 cat hoge > zmm_mul.h
 
 echo "N,Optimized,gradeSchool,GMP">measure.csv
-i=1
+
 while [ $i -lt $N ]
 do
 	echo "$i,=average(A$st:A$en),=average(B$st:B$en),=average(C$st:C$en)">>measure.csv
@@ -23,9 +23,11 @@ done
 
 ### measure ###
 
+outer=40
+
+cat hoge | sed "s/128 \* 1/128 \* $outer/" > zmm_mul.h
 make clean all
 
-outer=40
 while [ $outer -lt $N ]
 do
 	i=0
