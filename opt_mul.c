@@ -64,38 +64,64 @@ void multiply(unsigned int* a, unsigned int* b, unsigned int* t){
 		exit(1);
 	}
 
-	long step1[8], step2[8];
-	long repeat1[8], repeat2[8], repeat3[8], repeat4[8], repeat5[8];
+	long step1[8]; //, step2[8];
+	long repeat1[8]; //, repeat2[8], repeat3[8], repeat4[8], repeat5[8];
 
 	int i;
 	for(i=0; i<8; i++)	step1[i] = i;
-	for(i=0; i<8; i++)	step2[i] = i+8;
+	//for(i=0; i<8; i++)	step2[i] = i+8;
 	
 	for(i=0; i<8; i++)	repeat1[i] = 1;
+	/*
 	for(i=0; i<8; i++)	repeat2[i] = 2;
 	for(i=0; i<8; i++)	repeat3[i] = 4;
 	for(i=0; i<8; i++)	repeat4[i] = 8;
 	for(i=0; i<8; i++)	repeat5[i] = 13;
+*/
+
+	//new style
+	// make zmm24 = 0706050403020100
+	__asm__ volatile(
+		"vmovdqu64 %0, %%zmm26;"
+		::"m"(step1)
+	);	
+
+	// make zmm26 = 0101010101010101
+	__asm__ volatile(
+		"vmovdqu64 %0, %%zmm27;"
+		::"m"(repeat1)
+	);
+
+	__asm__ volatile(
+
+		"vpaddq %zmm27, %zmm27, %zmm28;" //0202020202020202
+		"vpaddq %zmm28, %zmm28, %zmm29;" //0404040404040404
+		"vpaddq %zmm29, %zmm29, %zmm30;" //0808080808080808
+	);
 
 	// make zmm24 = 0706050403020100 and,
 	// make zmm25 = 0f0e0d0c0b0a0908
+	// old style
+	/*
 	__asm__ volatile(
-		"vmovdqu64 %0, %%zmm24;"
-		"vmovdqu64 %1, %%zmm25;"
+		"vmovdqu64 %0, %%zmm26;"
+		"vmovdqu64 %1, %%zmmyy;"
 		::"m"(step1), "m"(step2)
 	);
 
 	// make repeat number
 	__asm__ volatile(
-		"vmovdqu64 %0, %%zmm26;"
-		"vmovdqu64 %1, %%zmm27;"
-		"vmovdqu64 %2, %%zmm28;"
-		"vmovdqu64 %3, %%zmm29;"
-		"vmovdqu64 %4, %%zmm30;"
+		"vmovdqu64 %0, %%zmm27;"
+		"vmovdqu64 %1, %%zmm28;"
+		"vmovdqu64 %2, %%zmm29;"
+		"vmovdqu64 %3, %%zmm30;"
+		"vmovdqu64 %4, %%zmmxx;"
 		::"m"(repeat1), "m"(repeat2), "m"(repeat3), "m"(repeat4), "m"(repeat5)
 	);
-
+	*/
 	
+	
+
 	multiply_outer(a, b, t, u, v, w, p, q, r, s);
 
 	//Finally, we do the 29bit carry calculation
@@ -126,24 +152,27 @@ void multiply_outer(unsigned int* a, unsigned int* b, unsigned int* t, unsigned 
 			// load b[i] ... b[i+7]
 			"vmovdqu32 (%0, %1, 4), %%zmm1;"
 	
+		
 			// load t[8-15], u[8-15], u[0-7], t[0-7], respectively
-			"vmovdqu64 64(%2, %1, 8), %%zmm8;" //latter t
-			"vmovdqu64 64(%3, %1, 8), %%zmm9;" //latter u
-			"vmovdqu64 64(%4, %1, 8), %%zmm10;" //latter v
-			"vmovdqu64 64(%5, %1, 8), %%zmm11;" //latter w
-			"vmovdqu64 64(%6, %1, 8), %%zmm12;" //latter p
-			"vmovdqu64 64(%7, %1, 8), %%zmm13;" //latter q
-			"vmovdqu64 64(%8, %1, 8), %%zmm14;" //latter r
-			"vmovdqu64 64(%9, %1, 8), %%zmm15;" //latter s
+			"vmovdqu64 64(%2, %1, 8), %%zmm10;" //latter t
+			"vmovdqu64 64(%3, %1, 8), %%zmm11;" //latter u
+			"vmovdqu64 64(%4, %1, 8), %%zmm12;" //latter v
+			"vmovdqu64 64(%5, %1, 8), %%zmm13;" //latter w
+			"vmovdqu64 64(%6, %1, 8), %%zmm14;" //latter p
+			"vmovdqu64 64(%7, %1, 8), %%zmm15;" //latter q
+			"vmovdqu64 64(%8, %1, 8), %%zmm16;" //latter r
+			"vmovdqu64 64(%9, %1, 8), %%zmm17;" //latter s
 
-			"vmovdqu64 (%2, %1, 8), %%zmm16;" //former t
-			"vmovdqu64 (%3, %1, 8), %%zmm17;" //former u
-			"vmovdqu64 (%4, %1, 8), %%zmm18;" //former v
-			"vmovdqu64 (%5, %1, 8), %%zmm19;" //former w
-			"vmovdqu64 (%6, %1, 8), %%zmm20;" //former p
-			"vmovdqu64 (%7, %1, 8), %%zmm21;" //former q
-			"vmovdqu64 (%8, %1, 8), %%zmm22;" //former r
-			"vmovdqu64 (%9, %1, 8), %%zmm23;" //former s
+
+			"vmovdqu64 (%2, %1, 8), %%zmm18;" //former t
+			"vmovdqu64 (%3, %1, 8), %%zmm19;" //former u
+			"vmovdqu64 (%4, %1, 8), %%zmm20;" //former v
+			"vmovdqu64 (%5, %1, 8), %%zmm21;" //former w
+			"vmovdqu64 (%6, %1, 8), %%zmm22;" //former p
+			"vmovdqu64 (%7, %1, 8), %%zmm23;" //former q
+			"vmovdqu64 (%8, %1, 8), %%zmm24;" //former r
+			"vmovdqu64 (%9, %1, 8), %%zmm25;" //former s
+		
 
 			::"r"(b), "r"(index_outer), "r"(t), "r"(u), "r"(v), "r"(w), "r"(p), "r"(q), "r"(r), "r"(s)
 		);
@@ -154,14 +183,14 @@ void multiply_outer(unsigned int* a, unsigned int* b, unsigned int* t, unsigned 
 		rdi = index_inner + index_outer;
 
 		__asm__ volatile(
-			"vmovdqu64 %%zmm16, 128(%1, %0, 8);"
-			"vmovdqu64 %%zmm17, 128(%2, %0, 8);"	
-			"vmovdqu64 %%zmm18, 128(%3, %0, 8);"
-			"vmovdqu64 %%zmm19, 128(%4, %0, 8);"
-			"vmovdqu64 %%zmm20, 128(%5, %0, 8);"
-			"vmovdqu64 %%zmm21, 128(%6, %0, 8);"	
-			"vmovdqu64 %%zmm22, 128(%7, %0, 8);"
-			"vmovdqu64 %%zmm23, 128(%8, %0, 8);"
+			"vmovdqu64 %%zmm18, 128(%1, %0, 8);"
+			"vmovdqu64 %%zmm19, 128(%2, %0, 8);"	
+			"vmovdqu64 %%zmm20, 128(%3, %0, 8);"
+			"vmovdqu64 %%zmm21, 128(%4, %0, 8);"
+			"vmovdqu64 %%zmm22, 128(%5, %0, 8);"
+			"vmovdqu64 %%zmm23, 128(%6, %0, 8);"	
+			"vmovdqu64 %%zmm24, 128(%7, %0, 8);"
+			"vmovdqu64 %%zmm25, 128(%8, %0, 8);"
 			::"r"(rdi), "r"(t), "r"(u), "r"(v), "r"(w), "r"(p), "r"(q), "r"(r), "r"(s)
 		);
 		
@@ -189,284 +218,213 @@ long multiply_inner(unsigned int* a, unsigned int* t, unsigned int* u, unsigned 
 
 		"vpxorq %zmm31, %zmm31, %zmm31;"
 		"vpermd %zmm1, %zmm31, %zmm3;" // 0000000000000000
-		"vpermd %zmm0, %zmm25, %zmm2;" // 0f0e0d0c0b0a0908
-		"vpmuludq %zmm3, %zmm2, %zmm3;" //A
-		"vpaddq %zmm3, %zmm8, %zmm8;"
+		"vpaddq %zmm26, %zmm30, %zmm31;"
+		"vpermd %zmm0, %zmm31, %zmm2;" // 0f0e0d0c0b0a0908
+		
+		"vpaddq %zmm27, %zmm28, %zmm31;"
 
-		"vpermd %zmm1, %zmm26, %zmm3;" // 0101010101010101
-		"vpmuludq %zmm3, %zmm2, %zmm3;" //B
-		"vpaddq %zmm3, %zmm9, %zmm9;"
+		"vpermd %zmm1, %zmm27, %zmm4;" // 0101010101010101	
+		"vpermd %zmm1, %zmm28, %zmm5;" // 0202020202020202
+		"vpermd %zmm1, %zmm31, %zmm6;" // 0303030303030303
+		
+		"vpmuludq %zmm3, %zmm2, %zmm7;" //mul A
+		"vpmuludq %zmm4, %zmm2, %zmm8;" //mul B
+		"vpmuludq %zmm5, %zmm2, %zmm9;" //mul C	
+		"vpmuludq %zmm6, %zmm2, %zmm2;" //mul D
 
-		"vpermd %zmm1, %zmm27, %zmm3;" // 0202020202020202
-		"vpmuludq %zmm3, %zmm2, %zmm3;" //C
-		"vpaddq %zmm3, %zmm10, %zmm10;"
 
-		"vpaddq %zmm26, %zmm27, %zmm31;"
-		"vpermd %zmm1, %zmm31, %zmm3;" // 0303030303030303
-		"vpmuludq %zmm3, %zmm2, %zmm2;" //D
-		"vpaddq %zmm2, %zmm11, %zmm11;"
-
-		"vpermd %zmm0, %zmm24, %zmm2;" // 0706050403020100
-		"vpmuludq %zmm3, %zmm2, %zmm3;" //E
-		"vpaddq %zmm3, %zmm19, %zmm19;"
+		"vpaddq %zmm7, %zmm10, %zmm10;" //add A
+		"vpaddq %zmm8, %zmm11, %zmm11;" //add B
+		"vpaddq %zmm9, %zmm12, %zmm12;" //add C
+		"vpaddq %zmm2, %zmm13, %zmm13;" //add D
 	);
 
 	__asm__ volatile(
-		"vmovdqu64 %%zmm19, (%0, %1, 8);"
-		"vmovdqu64 128(%0, %1, 8), %%zmm19;" //128 = sizeof(long)(i.e., 8) * 16
-		::"r"(w), "r"(index)
+		"vpermd %%zmm0, %%zmm26, %%zmm2;" // 0706050403020100
+		"vpxorq %%zmm31, %%zmm31, %%zmm31;"
+		"vpermd %%zmm1, %%zmm31, %%zmm3;" // 000000000000000
+
+		"vpmuludq %%zmm6, %%zmm2, %%zmm7;" //mul E
+		"vpmuludq %%zmm5, %%zmm2, %%zmm8;" //mul F
+		"vpmuludq %%zmm4, %%zmm2, %%zmm9;" //mul G
+		"vpmuludq %%zmm3, %%zmm2, %%zmm3;" //mul H
+
+		"vpaddq %%zmm7, %%zmm21, %%zmm21;" //add E
+		"vpaddq %%zmm8, %%zmm20, %%zmm20;" //add F
+		"vpaddq %%zmm9, %%zmm19, %%zmm19;" //add G
+		"vpaddq %%zmm3, %%zmm18, %%zmm18;" //add H
+
+		"vmovdqu64 %%zmm21, (%1, %0, 8);"
+		"vmovdqu64 %%zmm20, (%2, %0, 8);"
+		"vmovdqu64 %%zmm19, (%3, %0, 8);"
+		"vmovdqu64 %%zmm18, (%4, %0, 8);"
+		
+		"vmovdqu64 128(%1, %0, 8), %%zmm21;" //128 = sizeof(long)(i.e., 8) * 16
+		"vmovdqu64 128(%2, %0, 8), %%zmm20;"
+		"vmovdqu64 128(%3, %0, 8), %%zmm19;"
+		"vmovdqu64 128(%4, %0, 8), %%zmm18;"
+
+		::"r"(index), "r"(w), "r"(v), "r"(u), "r"(t)
 	);
 
 	__asm__ volatile(
-		"vpermd %zmm1, %zmm27, %zmm3;" // 02020202020202
-		"vpmuludq %zmm3, %zmm2, %zmm3;" //F
-		"vpaddq %zmm3, %zmm18, %zmm18;"
+		"vpermd %%zmm1, %%zmm30, %%zmm3;" // 0808080808080808
+		"vpaddq %%zmm27, %%zmm30, %%zmm31;"
+		
+		"vpmuludq %%zmm3, %%zmm2, %%zmm7;" //mul I
+
+		"vpermd %%zmm1, %%zmm31, %%zmm4;" // 0909090909090909
+		"vpaddq %%zmm27, %%zmm31, %%zmm31;"
+		
+		"vpmuludq %%zmm4, %%zmm2, %%zmm8;" //mul J
+
+		"vpermd %%zmm1, %%zmm31, %%zmm5;" // 0a0a0a0a0a0a0a0a
+		"vpaddq %%zmm27, %%zmm31, %%zmm31;"
+		
+		"vpmuludq %%zmm5, %%zmm2, %%zmm9;" //mul K
+
+		"vpermd %%zmm1, %%zmm31, %%zmm6;" // 0b0b0b0b0b0b0b0b
+
+		"vpmuludq %%zmm6, %%zmm2, %%zmm2;" //mul L
+		
+		"vpaddq %%zmm7, %%zmm10, %%zmm10;" //add I
+		"vpaddq %%zmm8, %%zmm11, %%zmm11;" //add J
+		"vpaddq %%zmm9, %%zmm12, %%zmm12;" //add K
+		"vpaddq %%zmm2, %%zmm13, %%zmm13;" //add L
+
+		"vmovdqu64 %%zmm10, 64(%1, %0, 8);"
+		"vmovdqu64 %%zmm11, 64(%2, %0, 8);"
+		"vmovdqu64 %%zmm12, 64(%3, %0, 8);"
+		"vmovdqu64 %%zmm13, 64(%4, %0, 8);"
+
+		"vmovdqu64 192(%1, %0, 8), %%zmm10;"
+		"vmovdqu64 192(%2, %0, 8), %%zmm11;"
+		"vmovdqu64 192(%3, %0, 8), %%zmm12;"
+		"vmovdqu64 192(%4, %0, 8), %%zmm13;"
+
+		::"r"(index), "r"(t), "r"(u), "r"(v), "r"(w)
+	);
+
+
+	__asm__ volatile(	
+		"vpaddq %zmm26, %zmm30, %zmm31;"
+		"vpermd %zmm0, %zmm31, %zmm2;" // 0f0e0d0c0b0a0908
+
+		"vpmuludq %zmm6, %zmm2, %zmm7;" //mul M
+		"vpmuludq %zmm5, %zmm2, %zmm8;" //mul N
+		"vpmuludq %zmm4, %zmm2, %zmm9;" //mul O
+		"vpmuludq %zmm3, %zmm2, %zmm3;" //mul P
+
+		"vpaddq %zmm7, %zmm21, %zmm21;" //add M
+		"vpaddq %zmm8, %zmm20, %zmm20;" //add N
+		"vpaddq %zmm9, %zmm19, %zmm19;" //add O
+		"vpaddq %zmm3, %zmm18, %zmm18;" //add P
 	);
 
 	__asm__ volatile(
-		"vmovdqu64 %%zmm18, (%0, %1, 8);"
-		"vmovdqu64 128(%0, %1, 8), %%zmm18;"
-		::"r"(v), "r"(index)
-	);
+		"vpermd %zmm1, %zmm29, %zmm3;" //0404040404040404
+		"vpaddq %zmm29, %zmm27, %zmm31;"
 
-	__asm__ volatile(
-		"vpermd %zmm1, %zmm26, %zmm3;" // 01010101010101
-		"vpmuludq %zmm3, %zmm2, %zmm3;" //G
-		"vpaddq %zmm3, %zmm17, %zmm17;"
-	);
+		"vpmuludq %zmm3, %zmm2, %zmm7;" //mul a
 
-	__asm__ volatile(
-		"vmovdqu64 %%zmm17, (%0, %1, 8);"
-		"vmovdqu64 128(%0, %1, 8), %%zmm17;"
-		::"r"(u), "r"(index)
-	);
+		"vpermd %zmm1, %zmm31, %zmm4;" //0505050505050505
+		"vpaddq %zmm27, %zmm31, %zmm31;"
 
-	__asm__ volatile(
-		"vpxorq %zmm31, %zmm31, %zmm31;"
-		"vpermd %zmm1, %zmm31, %zmm3;" // 000000000000000
-		"vpmuludq %zmm3, %zmm2, %zmm3;" //H
-		"vpaddq %zmm3, %zmm16, %zmm16;"
-	);
+		"vpmuludq %zmm4, %zmm2, %zmm8;" //mul b
 
-	__asm__ volatile(
-		"vmovdqu64 %%zmm16, (%0, %1, 8);"
-		"vmovdqu64 128(%0, %1, 8), %%zmm16;"
-		::"r"(t), "r"(index)
-	);
+		"vpermd %zmm1, %zmm31, %zmm5;" //0606060606060606
+		"vpaddq %zmm27, %zmm31, %zmm31;"
 
-	__asm__ volatile(
-		"vpermd %zmm1, %zmm29, %zmm3;" // 0808080808080808
-		"vpmuludq %zmm3, %zmm2, %zmm3;" //I
-		"vpaddq %zmm3, %zmm8, %zmm8;"
-	);
+		"vpmuludq %zmm5, %zmm2, %zmm9;" //mul c
 
-	__asm__ volatile(
-		"vmovdqu64 %%zmm8, 64(%0, %1, 8);"
-		"vmovdqu64 192(%0, %1, 8), %%zmm8;"
-		::"r"(t), "r"(index)
-	);
+		"vpermd %zmm1, %zmm31, %zmm6;" //0707070707070707
 
-	__asm__ volatile(
-		"vpaddq %zmm26, %zmm29, %zmm31;"
-		"vpermd %zmm1, %zmm31, %zmm3;" // 0909090909090909
-		"vpmuludq %zmm3, %zmm2, %zmm3;" //J
-		"vpaddq %zmm3, %zmm9, %zmm9;"
-	);
 
-	__asm__ volatile(
-		"vmovdqu64 %%zmm9, 64(%0, %1, 8);"
-		"vmovdqu64 192(%0, %1, 8), %%zmm9;"
-		::"r"(u), "r"(index)
-	);
-
-	__asm__ volatile(
-		"vpaddq %zmm26, %zmm31, %zmm31;"
-		"vpermd %zmm1, %zmm31, %zmm3;" // 0a0a0a0a0a0a0a0a
-		"vpmuludq %zmm3, %zmm2, %zmm3;" //K
-		"vpaddq %zmm3, %zmm10, %zmm10;"
-	);
-
-	__asm__ volatile(
-		"vmovdqu64 %%zmm10, 64(%0, %1, 8);"
-		"vmovdqu64 192(%0, %1, 8), %%zmm10;"
-		::"r"(v), "r"(index)
-	);
-
-	__asm__ volatile(
-		"vpaddq %zmm26, %zmm31, %zmm31;"
-		"vpermd %zmm1, %zmm31, %zmm3;" // 0b0b0b0b0b0b0b0b
-		"vpmuludq %zmm3, %zmm2, %zmm2;" //L
-		"vpaddq %zmm2, %zmm11, %zmm11;"
-	);
-
-	__asm__ volatile(
-		"vmovdqu64 %%zmm11, 64(%0, %1, 8);"
-		"vmovdqu64 192(%0, %1, 8), %%zmm11;"
-		::"r"(w), "r"(index)
-	);
-
-	__asm__ volatile(		
-		"vpermd %zmm0, %zmm25, %zmm2;" // 0f0e0d0c0b0a0908
-		"vpmuludq %zmm3, %zmm2, %zmm3;" //M
-		"vpaddq %zmm3, %zmm19, %zmm19;"
-
-		"vpsubq %zmm26, %zmm31, %zmm31;"
-		"vpermd %zmm1, %zmm31, %zmm3;" //0a0a0a0a0a0a0a0a 
-		"vpmuludq %zmm3, %zmm2, %zmm3;" //N
-		"vpaddq %zmm3, %zmm18, %zmm18;"
-
-		"vpsubq %zmm26, %zmm31, %zmm31;"
-		"vpermd %zmm1, %zmm31, %zmm3;" //0909090909090909 
-		"vpmuludq %zmm3, %zmm2, %zmm3;" //O
-		"vpaddq %zmm3, %zmm17, %zmm17;"
-
-		"vpsubq %zmm26, %zmm31, %zmm31;"
-		"vpermd %zmm1, %zmm31, %zmm3;" //0808080808080808 
-		"vpmuludq %zmm3, %zmm2, %zmm3;" //P
-		"vpaddq %zmm3, %zmm16, %zmm16;"
-	);
-
-	__asm__ volatile(
-		"vpermd %zmm1, %zmm28, %zmm3;" //0404040404040404
-		"vpmuludq %zmm3, %zmm2, %zmm3;" //a
-		"vpaddq %zmm3, %zmm12, %zmm12;"
-
-		"vpaddq %zmm28, %zmm26, %zmm31;"
-		"vpermd %zmm1, %zmm31, %zmm3;" //0505050505050505
-		"vpmuludq %zmm3, %zmm2, %zmm3;" //b
-		"vpaddq %zmm3, %zmm13, %zmm13;"
-
-		"vpaddq %zmm26, %zmm31, %zmm31;"
-		"vpermd %zmm1, %zmm31, %zmm3;" //0606060606060606
-		"vpmuludq %zmm3, %zmm2, %zmm3;" //c
-		"vpaddq %zmm3, %zmm14, %zmm14;"
-
-		"vpaddq %zmm26, %zmm31, %zmm31;"
-		"vpermd %zmm1, %zmm31, %zmm3;" //0707070707070707
-		"vpmuludq %zmm3, %zmm2, %zmm2;" //d
-		"vpaddq %zmm2, %zmm15, %zmm15;"
+		"vpaddq %zmm7, %zmm14, %zmm14;" //add a
+		"vpmuludq %zmm6, %zmm2, %zmm2;" //mul d
+		"vpaddq %zmm8, %zmm15, %zmm15;" //add b
+		"vpaddq %zmm9, %zmm16, %zmm16;" //add c
+		"vpaddq %zmm2, %zmm17, %zmm17;" //add d
 	);
 	
 	__asm__ volatile(
-		"vpermd %zmm0, %zmm24, %zmm2;" //0706050403020100
-		"vpmuludq %zmm2, %zmm3, %zmm3;" //e
-		"vpaddq %zmm3, %zmm23, %zmm23;"
+		"vpermd %%zmm0, %%zmm26, %%zmm2;" //0706050403020100
+
+		"vpmuludq %%zmm6, %%zmm2, %%zmm7;" //mul e
+		"vpmuludq %%zmm5, %%zmm2, %%zmm8;" //mul f
+		"vpmuludq %%zmm4, %%zmm2, %%zmm9;" //mul g
+		"vpmuludq %%zmm2, %%zmm3, %%zmm3;" //mul h
+
+		"vpaddq %%zmm7, %%zmm25, %%zmm25;" //add e
+		"vpaddq %%zmm8, %%zmm24, %%zmm24;" //add f
+		"vpaddq %%zmm9, %%zmm23, %%zmm23;" //add g
+		"vpaddq %%zmm3, %%zmm22, %%zmm22;" //add h
+
+		"vmovdqu64 %%zmm25, (%1, %0, 8);"
+		"vmovdqu64 %%zmm24, (%2, %0, 8);"
+		"vmovdqu64 %%zmm23, (%3, %0, 8);"
+		"vmovdqu64 %%zmm22, (%4, %0, 8);"		
+		
+		"vmovdqu64 128(%1, %0, 8), %%zmm25;" //128 = sizeof(long)(i.e., 8) * 16
+		"vmovdqu64 128(%2, %0, 8), %%zmm24;"
+		"vmovdqu64 128(%3, %0, 8), %%zmm23;"
+		"vmovdqu64 128(%4, %0, 8), %%zmm22;"
+
+		::"r"(index), "r"(s), "r"(r), "r"(q), "r"(p)
 	);
 
 	__asm__ volatile(
-		"vmovdqu64 %%zmm23, (%0, %1, 8);"
-		"vmovdqu64 128(%0, %1, 8), %%zmm23;" //128 = sizeof(long)(i.e., 8) * 16
-		::"r"(s), "r"(index)
+		"vpaddq %%zmm30, %%zmm29, %%zmm31;"
+		"vpermd %%zmm1, %%zmm31, %%zmm3;" // 0c0c0c0c0c0c0c0c
+		"vpaddq %%zmm31, %%zmm27, %%zmm31;"
+		
+		"vpmuludq %%zmm3, %%zmm2, %%zmm7;" //mul i
+		
+		"vpermd %%zmm1, %%zmm31, %%zmm4;" // 0d0d0d0d0d0d0d0d
+		"vpaddq %%zmm27, %%zmm31, %%zmm31;"
+		
+		"vpmuludq %%zmm4, %%zmm2, %%zmm8;" //mul j
+		
+		"vpermd %%zmm1, %%zmm31, %%zmm5;" // 0e0e0e0e0e0e0e0e
+		"vpaddq %%zmm27, %%zmm31, %%zmm31;"
+		
+		"vpmuludq %%zmm5, %%zmm2, %%zmm9;" //mul k
+		
+		"vpermd %%zmm1, %%zmm31, %%zmm6;" // 0f0f0f0f0f0f0f0f
+
+		"vpmuludq %%zmm6, %%zmm2, %%zmm2;" //mul l
+
+		"vpaddq %%zmm7, %%zmm14, %%zmm14;" //add i
+		"vpaddq %%zmm8, %%zmm15, %%zmm15;" //add j
+		"vpaddq %%zmm9, %%zmm16, %%zmm16;" //add k
+		"vpaddq %%zmm2, %%zmm17, %%zmm17;" //add l
+
+		"vmovdqu64 %%zmm14, 64(%1, %0, 8);"
+		"vmovdqu64 %%zmm15, 64(%2, %0, 8);"
+		"vmovdqu64 %%zmm16, 64(%3, %0, 8);"
+		"vmovdqu64 %%zmm17, 64(%4, %0, 8);"
+
+		"vmovdqu64 192(%1, %0, 8), %%zmm14;"
+		"vmovdqu64 192(%2, %0, 8), %%zmm15;"
+		"vmovdqu64 192(%3, %0, 8), %%zmm16;"
+		"vmovdqu64 192(%4, %0, 8), %%zmm17;"
+
+		::"r"(index), "r"(p), "r"(q), "r"(r), "r"(s)
 	);
 
-
-	__asm__ volatile(
-		"vpsubq %zmm26, %zmm31, %zmm31;"
-		"vpermd %zmm1, %zmm31, %zmm3;" //0606060606060606
-		"vpmuludq %zmm2, %zmm3, %zmm3;" //f
-		"vpaddq %zmm3, %zmm22, %zmm22;"
-	);
-
-	__asm__ volatile(
-		"vmovdqu64 %%zmm22, (%0, %1, 8);"
-		"vmovdqu64 128(%0, %1, 8), %%zmm22;"
-		::"r"(r), "r"(index)
-	);
-
-	__asm__ volatile(
-		"vpsubq %zmm26, %zmm31, %zmm31;"
-		"vpermd %zmm1, %zmm31, %zmm3;" //0505050505050505
-		"vpmuludq %zmm2, %zmm3, %zmm3;" //g
-		"vpaddq %zmm3, %zmm21, %zmm21;"
-	);
-
-	__asm__ volatile(
-		"vmovdqu64 %%zmm21, (%0, %1, 8);"
-		"vmovdqu64 128(%0, %1, 8), %%zmm21;"
-		::"r"(q), "r"(index)
-	);
-
-	__asm__ volatile(
-		"vpermd %zmm1, %zmm28, %zmm3;" //0404040404040404
-		"vpmuludq %zmm2, %zmm3, %zmm3;" //h
-		"vpaddq %zmm3, %zmm20, %zmm20;"
-	);
-
-	__asm__ volatile(
-		"vmovdqu64 %%zmm20, (%0, %1, 8);"
-		"vmovdqu64 128(%0, %1, 8), %%zmm20;"
-		::"r"(p), "r"(index)
-	);
-
-	__asm__ volatile(
-		"vpsubq %zmm26, %zmm30, %zmm31;"
-		"vpermd %zmm1, %zmm31, %zmm3;" // 0c0c0c0c0c0c0c0c
-		"vpmuludq %zmm3, %zmm2, %zmm3;" //i
-		"vpaddq %zmm3, %zmm12, %zmm12;"
-	);
-
-	__asm__ volatile(
-		"vmovdqu64 %%zmm12, 64(%0, %1, 8);"
-		"vmovdqu64 192(%0, %1, 8), %%zmm12;"
-		::"r"(p), "r"(index)
-	);
-
-	__asm__ volatile(
-		"vpermd %zmm1, %zmm30, %zmm3;" // 0d0d0d0d0d0d0d0d
-		"vpmuludq %zmm3, %zmm2, %zmm3;" //j
-		"vpaddq %zmm3, %zmm13, %zmm13;"
-	);
-
-	__asm__ volatile(
-		"vmovdqu64 %%zmm13, 64(%0, %1, 8);"
-		"vmovdqu64 192(%0, %1, 8), %%zmm13;"
-		::"r"(q), "r"(index)
-	);
-
-	__asm__ volatile(
+	__asm__ volatile(	
 		"vpaddq %zmm26, %zmm30, %zmm31;"
-		"vpermd %zmm1, %zmm31, %zmm3;" // 0e0e0e0e0e0e0e0e
-		"vpmuludq %zmm3, %zmm2, %zmm3;" //k
-		"vpaddq %zmm3, %zmm14, %zmm14;"
-	);
+		"vpermd %zmm0, %zmm31, %zmm2;" // 0f0e0d0c0b0a0908
+		
+		"vpmuludq %zmm6, %zmm2, %zmm7;" //mul m
+		"vpmuludq %zmm5, %zmm2, %zmm8;" //mul n
+		"vpmuludq %zmm4, %zmm2, %zmm9;" //mul o
+		"vpmuludq %zmm3, %zmm2, %zmm3;" //mul p
 
-	__asm__ volatile(
-		"vmovdqu64 %%zmm14, 64(%0, %1, 8);"
-		"vmovdqu64 192(%0, %1, 8), %%zmm14;"
-		::"r"(r), "r"(index)
-	);
-
-	__asm__ volatile(
-		"vpaddq %zmm26, %zmm31, %zmm31;"
-		"vpermd %zmm1, %zmm31, %zmm3;" // 0f0f0f0f0f0f0f0f
-		"vpmuludq %zmm3, %zmm2, %zmm2;" //l
-		"vpaddq %zmm2, %zmm15, %zmm15;"
-	);
-
-	__asm__ volatile(
-		"vmovdqu64 %%zmm15, 64(%0, %1, 8);"
-		"vmovdqu64 192(%0, %1, 8), %%zmm15;"
-		::"r"(s), "r"(index)
-	);
-
-	__asm__ volatile(		
-		"vpermd %zmm0, %zmm25, %zmm2;" // 0f0e0d0c0b0a0908
-		"vpmuludq %zmm3, %zmm2, %zmm3;" //m
-		"vpaddq %zmm3, %zmm23, %zmm23;"
-
-		"vpsubq %zmm26, %zmm31, %zmm31;"
-		"vpermd %zmm1, %zmm31, %zmm3;" //0e0e0e0e0e0e0e0e 
-		"vpmuludq %zmm3, %zmm2, %zmm3;" //n
-		"vpaddq %zmm3, %zmm22, %zmm22;"
-
-		"vpermd %zmm1, %zmm30, %zmm3;" //0d0d0d0d0d0d0d0d 
-		"vpmuludq %zmm3, %zmm2, %zmm3;" //o
-		"vpaddq %zmm3, %zmm21, %zmm21;"
-
-		"vpsubq %zmm27, %zmm31, %zmm31;"
-		"vpermd %zmm1, %zmm31, %zmm3;" //0c0c0c0c0c0c0c0c 
-		"vpmuludq %zmm3, %zmm2, %zmm3;" //p
-		"vpaddq %zmm3, %zmm20, %zmm20;"
+		"vpaddq %zmm7, %zmm25, %zmm25;" //add m
+		"vpaddq %zmm8, %zmm24, %zmm24;" //add n
+		"vpaddq %zmm9, %zmm23, %zmm23;" //add o
+		"vpaddq %zmm3, %zmm22, %zmm22;" //add p
 	);
 	}
 
