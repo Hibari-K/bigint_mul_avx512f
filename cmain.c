@@ -5,6 +5,8 @@
 
 #include "zmm_mul.h"
 
+//#define DEBUG
+
 void combine_29bit(unsigned int* data, unsigned int* result);
 void split_29bit(unsigned int* data, unsigned int* result, int digits);
 void multiply(unsigned int* a, unsigned int* b, unsigned int* t);
@@ -89,9 +91,7 @@ int main(int argc, char** argv){
 	// use GMP
 	gmp_mul(argv[1]);
 
-    for(j=0; j<(2*N+1); j++) T[j] = 0;
-
-    BigMultiply(A, B, T);
+#ifdef DEBUG
     // Error check
     int flag = 0;
     for(i=2*N; i>=0; i--){
@@ -101,7 +101,7 @@ int main(int argc, char** argv){
 		}
     }
     if(!flag) puts("-------- No Error --------");
-
+#endif
 
     free(a);
     free(b);
