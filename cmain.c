@@ -5,7 +5,7 @@
 
 #include "zmm_mul.h"
 
-#define DEBUG
+//#define DEBUG
 
 void combine_29bit(unsigned int* data, unsigned int* result);
 void split_29bit(unsigned int* data, unsigned int* result, int digits);
@@ -44,7 +44,7 @@ int main(int argc, char** argv){
     int i,j;
 
     // initialize
-    for(j=0; j<N-1; j++){
+    for(j=0; j<N; j++){
 		data_a[j] = A[j] = 0x11111111;
 		data_b[j] = B[j] = 0x11111111;
     }
