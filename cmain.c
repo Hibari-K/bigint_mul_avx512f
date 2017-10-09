@@ -5,7 +5,7 @@
 
 #include "zmm_mul.h"
 
-//#define DEBUG
+#define DEBUG
 
 void combine_29bit(unsigned int* data, unsigned int* result);
 void split_29bit(unsigned int* data, unsigned int* result, int digits);
@@ -75,6 +75,10 @@ int main(int argc, char** argv){
     printf("%lf,", time);
     //printf("\nOptimized\t: Average time = %lf [us]\n", time);
     
+	// use GMP
+	gmp_mul(argv[1]);
+
+
 	total = 0.0;
     
     // normal multiply 
@@ -89,11 +93,9 @@ int main(int argc, char** argv){
     }
 
     time = (total / 30.0) * 1000 * 1000;
-    printf("%lf,", time);
+    printf("%lf\n", time);
     //printf("Normal\t\t: Average time = %lf [us]\n", time);
 
-	// use GMP
-	gmp_mul(argv[1]);
 
 
 #ifdef DEBUG
