@@ -40,9 +40,9 @@ int main(int argc, char** argv){
     int i,j;
 
     // initialize
-    for(j=0; j<N-1; j++){
-		data_a[j] = A[j] = 0x11111111;
-		data_b[j] = B[j] = 0x11111111;
+    for(j=0; j<N; j++){
+		data_a[j] = A[j] = 0xffffffff;
+		data_b[j] = B[j] = 0xffffffff;
     }
     
     struct timeval s, e;
@@ -73,6 +73,9 @@ int main(int argc, char** argv){
     
 	total = 0.0;
     
+	// use GMP
+	gmp_mul(argv[1]);
+
     // normal multiply 
     for(i=0; i<30; i++){
         for(j=0; j<(2*N+1); j++) T[j] = 0;
@@ -85,14 +88,11 @@ int main(int argc, char** argv){
     }
 
     time = (total / 30.0) * 1000 * 1000;
-    printf("%lf,", time);
-    //printf("Normal\t\t: Average time = %lf [us]\n", time);
+    printf("%lf\n", time);
+    //printf("Normal\t\t: Average time = %lf [us]\n", time)
 
-	// use GMP
-	gmp_mul(argv[1]);
-
-#ifdef DEBUG
     // Error check
+#ifdef DEBUG
     int flag = 0;
     for(i=2*N; i>=0; i--){
 		if(result_t[i] != T[i]){
