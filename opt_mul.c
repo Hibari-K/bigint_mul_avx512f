@@ -64,22 +64,13 @@ void multiply(unsigned int* a, unsigned int* b, unsigned int* t){
 		exit(1);
 	}
 
-	long step1[8]; //, step2[8];
-	long repeat1[8]; //, repeat2[8], repeat3[8], repeat4[8], repeat5[8];
+	long step1[8]; 
+	long repeat1[8];
 
 	int i;
 	for(i=0; i<8; i++)	step1[i] = i;
-	//for(i=0; i<8; i++)	step2[i] = i+8;
-	
 	for(i=0; i<8; i++)	repeat1[i] = 1;
-	/*
-	for(i=0; i<8; i++)	repeat2[i] = 2;
-	for(i=0; i<8; i++)	repeat3[i] = 4;
-	for(i=0; i<8; i++)	repeat4[i] = 8;
-	for(i=0; i<8; i++)	repeat5[i] = 13;
-*/
 
-	//new style
 	// make zmm24 = 0706050403020100
 	__asm__ volatile(
 		"vmovdqu64 %0, %%zmm26;"
@@ -99,36 +90,12 @@ void multiply(unsigned int* a, unsigned int* b, unsigned int* t){
 		"vpaddq %zmm29, %zmm29, %zmm30;" //0808080808080808
 	);
 
-	// make zmm24 = 0706050403020100 and,
-	// make zmm25 = 0f0e0d0c0b0a0908
-	// old style
-	/*
-	__asm__ volatile(
-		"vmovdqu64 %0, %%zmm26;"
-		"vmovdqu64 %1, %%zmmyy;"
-		::"m"(step1), "m"(step2)
-	);
-
-	// make repeat number
-	__asm__ volatile(
-		"vmovdqu64 %0, %%zmm27;"
-		"vmovdqu64 %1, %%zmm28;"
-		"vmovdqu64 %2, %%zmm29;"
-		"vmovdqu64 %3, %%zmm30;"
-		"vmovdqu64 %4, %%zmmxx;"
-		::"m"(repeat1), "m"(repeat2), "m"(repeat3), "m"(repeat4), "m"(repeat5)
-	);
-	*/
-	
-	
 
 	multiply_outer(a, b, t, u, v, w, p, q, r, s);
 
 	//Finally, we do the 29bit carry calculation
 	//and add the two result arrays
-
 	calc_carry(t, u, v, w, p, q, r, s);
-    
 
 	free(u);
 	free(v);
