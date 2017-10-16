@@ -45,8 +45,8 @@ int main(int argc, char** argv){
 
     // initialize
     for(j=0; j<N; j++){
-		data_a[j] = A[j] = 0x11111111;
-		data_b[j] = B[j] = 0x11111111;
+		data_a[j] = A[j] = 0xffffffff;
+		data_b[j] = B[j] = 0xffffffff;
     }
     
     struct timeval s, e;
@@ -97,11 +97,21 @@ int main(int argc, char** argv){
     //printf("Normal\t\t: Average time = %lf [us]\n", time);
 
 
+	
+
+	FILE *result = fopen("result_t.txt", "w");
+	
+	for(i=2*N-1; i>=0; i--)
+		fprintf(result, "%08x", result_t[i]);
+	
+	fprintf(result, "\n");
+
+	fclose(result);
 
 #ifdef DEBUG
 	// Error check
     int flag = 0;
-    for(i=2*N; i>=0; i--){
+    for(i=2*N-1; i>=0; i--){
 		if(result_t[i] != T[i]){
 	    	printf("%d\n%x %x\n", i, result_t[i], T[i]);
 			flag = 1;

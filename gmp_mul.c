@@ -37,8 +37,12 @@ void gmp_mul(char* argv){
 	//printf("GMP\t\t: Average time = %lf [us]\n", time);
     printf("%lf,", time);
 
-	//mpz_out_str(stdout, BASE, res);
-	//printf("\n");
+	FILE *result = fopen("result_gmp.txt", "w");
+
+	mpz_out_str(result, BASE, res);
+	fprintf(result, "\n");
+
+	fclose(result);
 
 	//mpz_out_str(stdout, 16, b);
 	//printf("\n");
