@@ -35,7 +35,7 @@ void gmp_mul(char* argv){
 
 	time = (total / 30.0)*1000*1000;
 	//printf("GMP\t\t: Average time = %lf [us]\n", time);
-    printf("%lf,", time);
+    printf("%lf\n", time);
 
 	FILE *result = fopen("result_gmp.txt", "w");
 

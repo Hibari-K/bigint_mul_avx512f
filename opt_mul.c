@@ -9,10 +9,16 @@ long multiply_inner(unsigned int* a, unsigned int* t, unsigned int* u, unsigned 
 void calc_carry(unsigned int* t, unsigned int* u, unsigned int* v, unsigned int* w, unsigned int* p, unsigned int* q, unsigned int* r, unsigned int* s);
 void cloop(unsigned int* t, unsigned int* u, unsigned int* v, unsigned int* w, unsigned int* p, unsigned int* q, unsigned int* r, unsigned int* s);
 
+void combine_29bit(unsigned int* data, unsigned int* result);
+void split_29bit(unsigned int* data, unsigned int* result, int digits);
+
+void combine_28bit(unsigned int* data, unsigned int* result, int digits);
+void split_28bit(unsigned int* data, unsigned int* result, int digits);
+
 
 //multiply(a, b, t, DIGITS, DIGITSTIMESTWO);
 
-void multiply(unsigned int* a, unsigned int* b, unsigned int* t){
+void multiply(unsigned int* data_a, unsigned int* data_b, unsigned int* t){
 
    /*
 	 It is not desirable to use scalar operation,
@@ -49,6 +55,9 @@ void multiply(unsigned int* a, unsigned int* b, unsigned int* t){
 	  that is, the former is (i) and the latter is (ii).
 	  
 	 */
+	unsigned int* a = calloc((4*M),sizeof(long));
+	unsigned int* b = calloc((4*M),sizeof(long));
+	unsigned int* t_tmp = calloc((4*M),sizeof(long));
 
 	unsigned int* u = calloc((4*M),sizeof(long));
 	unsigned int* v = calloc((4*M),sizeof(long));
@@ -99,37 +108,22 @@ void multiply(unsigned int* a, unsigned int* b, unsigned int* t){
 		"vpaddq %zmm29, %zmm29, %zmm30;" //0808080808080808
 	);
 
-	// make zmm24 = 0706050403020100 and,
-	// make zmm25 = 0f0e0d0c0b0a0908
-	// old style
-	/*
-	__asm__ volatile(
-		"vmovdqu64 %0, %%zmm26;"
-		"vmovdqu64 %1, %%zmmyy;"
-		::"m"(step1), "m"(step2)
-	);
 
-	// make repeat number
-	__asm__ volatile(
-		"vmovdqu64 %0, %%zmm27;"
-		"vmovdqu64 %1, %%zmm28;"
-		"vmovdqu64 %2, %%zmm29;"
-		"vmovdqu64 %3, %%zmm30;"
-		"vmovdqu64 %4, %%zmmxx;"
-		::"m"(repeat1), "m"(repeat2), "m"(repeat3), "m"(repeat4), "m"(repeat5)
-	);
-	*/
-	
-	
+	split_28bit(data_a, a, SPLITDIGITS);
+	split_28bit(data_b, b, SPLITDIGITS);
 
-	multiply_outer(a, b, t, u, v, w, p, q, r, s);
+	multiply_outer(a, b, t_tmp, u, v, w, p, q, r, s);
 
 	//Finally, we do the 29bit carry calculation
 	//and add the two result arrays
 
-	calc_carry(t, u, v, w, p, q, r, s);
-    
+	calc_carry(t_tmp, u, v, w, p, q, r, s);
 
+	combine_28bit(t_tmp, t, COMDIGITS);
+
+	free(a);
+	free(b);
+	free(t_tmp);
 	free(u);
 	free(v);
 	free(w);
@@ -138,7 +132,7 @@ void multiply(unsigned int* a, unsigned int* b, unsigned int* t){
 	free(r);
 	free(s);
 
-	u = v = w = p = q = r = s = NULL;
+	a = b = t_tmp = u = v = w = p = q = r = s = NULL;
 }
 
 void multiply_outer(unsigned int* a, unsigned int* b, unsigned int* t, unsigned int* u, unsigned int* v, unsigned int* w, unsigned int* p, unsigned int* q, unsigned int* r, unsigned int* s){
@@ -448,7 +442,7 @@ void calc_carry(unsigned int* t, unsigned int* u, unsigned int* v, unsigned int*
 
 	 __asm__ volatile(
 		"pxor %%mm6, %%mm6;"
-		"mov $0x1fffffff, %%eax;"
+		"mov $0xfffffff, %%eax;"
 		"movd %%eax, %%mm7;"
 		//[0]
 		"movq (%0), %%mm0;"
