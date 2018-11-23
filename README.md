@@ -1,2 +1,2 @@
 # zmm_mul
-Multiply with using ZMM registers
+Multiplication using AVX-512F instructions with naive algorithm
