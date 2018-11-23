@@ -1,0 +1,2 @@
+#!/bin/sh
+icc -S -O3 -lmemkind -xMIC-AVX512 opt_mul.c -o $1

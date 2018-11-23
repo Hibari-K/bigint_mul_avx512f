@@ -1,593 +1,439 @@
 #include<stdio.h>
 #include<stdlib.h>
+#include<hbwmalloc.h>
+#include<immintrin.h>
 
 #include "zmm_mul.h"
 
 
-void multiply_outer(unsigned int* a, unsigned int* b, unsigned int* t, unsigned int* u, unsigned int* v, unsigned int* w, unsigned int* p, unsigned int* q, unsigned int* r, unsigned int* s);
-long multiply_inner(unsigned int* a, unsigned int* t, unsigned int* u, unsigned int* v, unsigned int* w, unsigned int* p, unsigned int* q, unsigned int* r, unsigned int* s, long index_outer);
-void calc_carry(unsigned int* t, unsigned int* u, unsigned int* v, unsigned int* w, unsigned int* p, unsigned int* q, unsigned int* r, unsigned int* s);
-void cloop(unsigned int* t, unsigned int* u, unsigned int* v, unsigned int* w, unsigned int* p, unsigned int* q, unsigned int* r, unsigned int* s);
-
-
-//multiply(a, b, t, DIGITS, DIGITSTIMESTWO);
-
-void multiply(unsigned int* a, unsigned int* b, unsigned int* t){
-
-   /*
-	 It is not desirable to use scalar operation,
-	 since it can introduce bottleneck in using not only SSE but AVX-512.
-
-	  Algorithm ( Concept )
-
-	                             0x f e d c b a 9 8 7 6 5 4 3 2 1 0 ... (i)
-	  *                          0x f'e'd'c'b'a'9'8'7'6'5'4'3'2'1'0'... (ii)
-	  -------------------------------------------------------------
-	                                A A A A A A A A H H H H H H H H     
-	                              B B B B B B B B G G G G G G G G       
-	                            C C C C C C C C F F F F F F F F        
-	                          E E E E E E E E D D D D D D D D          
-	                        a a a a a a a a h h h h h h h h
-	                      b b b b b b b b g g g g g g g g
-	                    c c c c c c c c f f f f f f f f
-	                  d d d d d d d d e e e e e e e e
-	                P P P P P P P P I I I I I I I I
-	              O O O O O O O O J J J J J J J J
-	            N N N N N N N N K K K K K K K K
-	          M M M M M M M M L L L L L L L L 
-	        p p p p p p p p i i i i i i i i
-	      o o o o o o o o j j j j j j j j
-	    n n n n n n n n k k k k k k k k
-	  m m m m m m m m l l l l l l l l
-	  ------------------------------------------------------------
-
-
-	  Capital alphabet commented out in following code (e.g., //A)
-	  corresponds to the alphabet shown in above figure.
-	  Steplike number (e.g., 03020100) and repeated number (e.g., 01010101) 
-	  indicates multiplicand and multiplier, respectively;
-	  that is, the former is (i) and the latter is (ii).
-	  
-	 */
-
-	unsigned int* u = calloc((4*M),sizeof(long));
-	unsigned int* v = calloc((4*M),sizeof(long));
-	unsigned int* w = calloc((4*M),sizeof(long));
-
-	unsigned int* p = calloc((4*M),sizeof(long));
-	unsigned int* q = calloc((4*M),sizeof(long));
-	unsigned int* r = calloc((4*M),sizeof(long));
-	unsigned int* s = calloc((4*M),sizeof(long));
-
-	if(!(u && v && w && p && q && r && s)){
-		puts("malloc error");
-		exit(1);
-	}
-
-	long step1[8]; 
-	long repeat1[8];
-
-	int i;
-	for(i=0; i<8; i++)	step1[i] = i;
-	for(i=0; i<8; i++)	repeat1[i] = 1;
-
-	// make zmm24 = 0706050403020100
-	__asm__ volatile(
-		"vmovdqu64 %0, %%zmm26;"
-		::"m"(step1)
-	);	
-
-	// make zmm26 = 0101010101010101
-	__asm__ volatile(
-		"vmovdqu64 %0, %%zmm27;"
-		::"m"(repeat1)
-	);
-
-	__asm__ volatile(
-
-		"vpaddq %zmm27, %zmm27, %zmm28;" //0202020202020202
-		"vpaddq %zmm28, %zmm28, %zmm29;" //0404040404040404
-		"vpaddq %zmm29, %zmm29, %zmm30;" //0808080808080808
-	);
-
-
-	multiply_outer(a, b, t, u, v, w, p, q, r, s);
-
-	//Finally, we do the 29bit carry calculation
-	//and add the two result arrays
-	calc_carry(t, u, v, w, p, q, r, s);
-
-	free(u);
-	free(v);
-	free(w);
-	free(p);
-	free(q);
-	free(r);
-	free(s);
-
-	u = v = w = p = q = r = s = NULL;
-}
-
 void multiply_outer(unsigned int* a, unsigned int* b, unsigned int* t, unsigned int* u, unsigned int* v, unsigned int* w, unsigned int* p, unsigned int* q, unsigned int* r, unsigned int* s){
 
+	__m512i zmm_fed = _mm512_set_epi64(0xf, 0xe, 0xd, 0xc, 0xb, 0xa, 0x9, 0x8);
+	__m512i zmm_765 = _mm512_set_epi64(7, 6, 5, 4, 3, 2, 1, 0);
+	__m512i zmm_000 = _mm512_setzero_epi32();
+	__m512i zmm_111 = _mm512_set_epi64(1,1,1,1,1,1,1,1);
+	__m512i zmm_222;// = _mm512_set_epi64(2,2,2,2,2,2,2,2);
+	__m512i zmm_333;// = _mm512_set_epi64(3,3,3,3,3,3,3,3);
+	__m512i zmm_444;// = _mm512_set_epi64(4,4,4,4,4,4,4,4);
+	__m512i zmm_555;// = _mm512_set_epi64(5,5,5,5,5,5,5,5);
+	__m512i zmm_666;// = _mm512_set_epi64(6,6,6,6,6,6,6,6);
+	__m512i zmm_777;// = _mm512_set_epi64(7,7,7,7,7,7,7,7);
+	__m512i zmm_888 = _mm512_set_epi64(8,8,8,8,8,8,8,8);
+	__m512i zmm_999;// = _mm512_set_epi64(9,9,9,9,9,9,9,9);
+	__m512i zmm_aaa;// = _mm512_set_epi64(10,10,10,10,10,10,10,10);
+	__m512i zmm_bbb;// = _mm512_set_epi64(11,11,11,11,11,11,11,11);
+	__m512i zmm_ccc;// = _mm512_set_epi64(12,12,12,12,12,12,12,12);
+	__m512i zmm_ddd;// = _mm512_set_epi64(13,13,13,13,13,13,13,13);
+	__m512i zmm_eee;// = _mm512_set_epi64(14,14,14,14,14,14,14,14);
+	__m512i zmm_fff;// = _mm512_set_epi64(15,15,15,15,15,15,15,15);
+
+	int index_outer = 0;
+	int index_inner = 8;
+	int rdi;
+	int index;
+	__m512i zmm_a, zmm_aH, zmm_aL, zmm_b;
+	__m512i tmp1, tmp2;
+
+	__m512i zmm_b0 = _mm512_load_epi32(b);
+
+	__m512i zmm_a0 = _mm512_load_epi32(a);
+	__m512i zmm_a0H = _mm512_permutexvar_epi32(zmm_fed, zmm_a0);
+	__m512i zmm_a0L = _mm512_permutexvar_epi32(zmm_765, zmm_a0);
+
+	__m512i zmm_b1 = _mm512_load_epi32(b+16);
+
+	__m512i zmm_a1 = _mm512_load_epi32(a+16);
+	__m512i zmm_a1H = _mm512_permutexvar_epi32(zmm_fed, zmm_a1);
+	__m512i zmm_a1L = _mm512_permutexvar_epi32(zmm_765, zmm_a1);
+
+	__m512i zmm_b00 = _mm512_permutexvar_epi32(zmm_000, zmm_b0);
+	__m512i zmm_b08 = _mm512_permutexvar_epi32(zmm_888, zmm_b0);
+	__m512i zmm_b10 = _mm512_permutexvar_epi32(zmm_000, zmm_b1);
+	__m512i zmm_b18 = _mm512_permutexvar_epi32(zmm_888, zmm_b1);
+	zmm_111 = _mm512_add_epi64(zmm_000, zmm_111);
+	zmm_999 = _mm512_add_epi64(zmm_888, zmm_111);
+	__m512i zmm_b01 = _mm512_permutexvar_epi32(zmm_111, zmm_b0);
+	__m512i zmm_b09 = _mm512_permutexvar_epi32(zmm_999, zmm_b0);
+	__m512i zmm_b11 = _mm512_permutexvar_epi32(zmm_111, zmm_b1);
+	__m512i zmm_b19 = _mm512_permutexvar_epi32(zmm_999, zmm_b1);
+	__m512i t1 = _mm512_load_epi64(t);
+	t1 = _mm512_add_epi64(t1, _mm512_mul_epu32(zmm_a0L, zmm_b00));
+	_mm512_store_epi64(t, t1);
+
+	__m512i u1 = _mm512_load_epi64(u);
+	u1 = _mm512_add_epi64(u1, _mm512_mul_epu32(zmm_a0L, zmm_b01));
+	_mm512_store_epi64(u, u1);
+
+	__m512i t2 = _mm512_load_epi64(t+16);
+	tmp1 = _mm512_add_epi64(_mm512_mul_epu32(zmm_a0H, zmm_b00),
+							_mm512_mul_epu32(zmm_a0L, zmm_b08));
+	t2 = _mm512_add_epi64(t2, tmp1);
+	_mm512_store_epi64(t+16, t2);
+
+	__m512i u2 = _mm512_load_epi64(u+16);
+	tmp1 = _mm512_add_epi64(_mm512_mul_epu32(zmm_a0H, zmm_b01),
+							_mm512_mul_epu32(zmm_a0L, zmm_b09));
+	u2 = _mm512_add_epi64(u2, tmp1);
+	_mm512_store_epi64(u+16, u2);
+
+	__m512i t3 = _mm512_load_epi64(t+32);
+	tmp1 = _mm512_add_epi64(_mm512_mul_epu32(zmm_a0H, zmm_b08),
+							_mm512_mul_epu32(zmm_a1L, zmm_b00));
+	t3 = _mm512_add_epi64(t3, _mm512_mul_epu32(zmm_a0L, zmm_b10));
+	t3 = _mm512_add_epi64(t3, tmp1);
+	_mm512_store_epi64(t+32, t3);
+
+	__m512i u3 = _mm512_load_epi64(u+32);
+	tmp1 = _mm512_add_epi64(_mm512_mul_epu32(zmm_a0H, zmm_b09),
+							_mm512_mul_epu32(zmm_a1L, zmm_b01));
+	u3 = _mm512_add_epi64(u3, _mm512_mul_epu32(zmm_a0L, zmm_b11));
+	u3 = _mm512_add_epi64(u3, tmp1);
+	_mm512_store_epi64(u+32, u3);
+
+	__m512i t4 = _mm512_load_epi64(t+48);
+	tmp1 = _mm512_add_epi64(_mm512_mul_epu32(zmm_a1H, zmm_b00),
+							_mm512_mul_epu32(zmm_a1L, zmm_b08));
+	tmp2 = _mm512_add_epi64(_mm512_mul_epu32(zmm_a0H, zmm_b10),
+							_mm512_mul_epu32(zmm_a0L, zmm_b18));
+	t4 = _mm512_add_epi64(t4, tmp1);
+	t4 = _mm512_add_epi64(t4, tmp2);
+	_mm512_store_epi64(t+48, t4);
+
+	__m512i u4 = _mm512_load_epi64(u+48);
+	tmp1 = _mm512_add_epi64(_mm512_mul_epu32(zmm_a1H, zmm_b01),
+							_mm512_mul_epu32(zmm_a1L, zmm_b09));
+	tmp2 = _mm512_add_epi64(_mm512_mul_epu32(zmm_a0H, zmm_b11),
+							_mm512_mul_epu32(zmm_a0L, zmm_b19));
+	u4 = _mm512_add_epi64(u4, tmp1);
+	u4 = _mm512_add_epi64(u4, tmp2);
+	_mm512_store_epi64(u+48, u4);
+
+	__m512i t5 = _mm512_load_epi64(t+64);
+	tmp1 = _mm512_add_epi64(_mm512_mul_epu32(zmm_a0H, zmm_b18),
+							_mm512_mul_epu32(zmm_a1L, zmm_b10));
+	t5 = _mm512_add_epi64(t5, _mm512_mul_epu32(zmm_a1H, zmm_b08));
+	t5 = _mm512_add_epi64(t5, tmp1);
+	_mm512_store_epi64(t+64, t5);
+
+	__m512i u5 = _mm512_load_epi64(u+64);
+	tmp1 = _mm512_add_epi64(_mm512_mul_epu32(zmm_a0H, zmm_b19),
+							_mm512_mul_epu32(zmm_a1L, zmm_b11));
+	u5 = _mm512_add_epi64(u5, _mm512_mul_epu32(zmm_a1H, zmm_b09));
+	u5 = _mm512_add_epi64(u5, tmp1);
+	_mm512_store_epi64(u+64, u5);
+
+	__m512i t6 = _mm512_load_epi64(t+80);
+	tmp1 = _mm512_add_epi64(_mm512_mul_epu32(zmm_a1H, zmm_b10),
+							_mm512_mul_epu32(zmm_a1L, zmm_b18));
+	t6 = _mm512_add_epi64(t6, tmp1);
+	_mm512_store_epi64(t+80, t6);
+
+	__m512i u6 = _mm512_load_epi64(u+80);
+	tmp1 = _mm512_add_epi64(_mm512_mul_epu32(zmm_a1H, zmm_b11),
+							_mm512_mul_epu32(zmm_a1L, zmm_b19));
+	u6 = _mm512_add_epi64(u6, tmp1);
+	_mm512_store_epi64(u+80, u6);
+
+	__m512i t7 = _mm512_load_epi64(t+96);
+	t7 = _mm512_add_epi64(t7, _mm512_mul_epu32(zmm_a1H, zmm_b18));
+	_mm512_store_epi64(t+96, t7);
+
+	__m512i u7 = _mm512_load_epi64(u+96);
+	u7 = _mm512_add_epi64(u7, _mm512_mul_epu32(zmm_a1H, zmm_b19));
+	_mm512_store_epi64(u+96, u7);
+
+	zmm_222 = _mm512_add_epi64(zmm_111, zmm_111);
+	zmm_aaa = _mm512_add_epi64(zmm_999, zmm_111);
+	__m512i zmm_b02 = _mm512_permutexvar_epi32(zmm_222, zmm_b0);
+	__m512i zmm_b0a = _mm512_permutexvar_epi32(zmm_aaa, zmm_b0);
+	__m512i zmm_b12 = _mm512_permutexvar_epi32(zmm_222, zmm_b1);
+	__m512i zmm_b1a = _mm512_permutexvar_epi32(zmm_aaa, zmm_b1);
+	zmm_333 = _mm512_add_epi64(zmm_222, zmm_111);
+	zmm_bbb = _mm512_add_epi64(zmm_aaa, zmm_111);
+	__m512i zmm_b03 = _mm512_permutexvar_epi32(zmm_333, zmm_b0);
+	__m512i zmm_b0b = _mm512_permutexvar_epi32(zmm_bbb, zmm_b0);
+	__m512i zmm_b13 = _mm512_permutexvar_epi32(zmm_333, zmm_b1);
+	__m512i zmm_b1b = _mm512_permutexvar_epi32(zmm_bbb, zmm_b1);
+	__m512i v1 = _mm512_load_epi64(v);
+	v1 = _mm512_add_epi64(v1, _mm512_mul_epu32(zmm_a0L, zmm_b02));
+	_mm512_store_epi64(v, v1);
+
+	__m512i w1 = _mm512_load_epi64(w);
+	w1 = _mm512_add_epi64(w1, _mm512_mul_epu32(zmm_a0L, zmm_b03));
+	_mm512_store_epi64(w, w1);
+
+	__m512i v2 = _mm512_load_epi64(v+16);
+	tmp1 = _mm512_add_epi64(_mm512_mul_epu32(zmm_a0H, zmm_b02),
+							_mm512_mul_epu32(zmm_a0L, zmm_b0a));
+	v2 = _mm512_add_epi64(v2, tmp1);
+	_mm512_store_epi64(v+16, v2);
+
+	__m512i w2 = _mm512_load_epi64(w+16);
+	tmp1 = _mm512_add_epi64(_mm512_mul_epu32(zmm_a0H, zmm_b03),
+							_mm512_mul_epu32(zmm_a0L, zmm_b0b));
+	w2 = _mm512_add_epi64(w2, tmp1);
+	_mm512_store_epi64(w+16, w2);
+
+	__m512i v3 = _mm512_load_epi64(v+32);
+	tmp1 = _mm512_add_epi64(_mm512_mul_epu32(zmm_a0H, zmm_b0a),
+							_mm512_mul_epu32(zmm_a1L, zmm_b02));
+	v3 = _mm512_add_epi64(v3, _mm512_mul_epu32(zmm_a0L, zmm_b12));
+	v3 = _mm512_add_epi64(v3, tmp1);
+	_mm512_store_epi64(v+32, v3);
+
+	__m512i w3 = _mm512_load_epi64(w+32);
+	tmp1 = _mm512_add_epi64(_mm512_mul_epu32(zmm_a0H, zmm_b0b),
+							_mm512_mul_epu32(zmm_a1L, zmm_b03));
+	w3 = _mm512_add_epi64(w3, _mm512_mul_epu32(zmm_a0L, zmm_b13));
+	w3 = _mm512_add_epi64(w3, tmp1);
+	_mm512_store_epi64(w+32, w3);
+
+	__m512i v4 = _mm512_load_epi64(v+48);
+	tmp1 = _mm512_add_epi64(_mm512_mul_epu32(zmm_a1H, zmm_b02),
+							_mm512_mul_epu32(zmm_a1L, zmm_b0a));
+	tmp2 = _mm512_add_epi64(_mm512_mul_epu32(zmm_a0H, zmm_b12),
+							_mm512_mul_epu32(zmm_a0L, zmm_b1a));
+	v4 = _mm512_add_epi64(v4, tmp1);
+	v4 = _mm512_add_epi64(v4, tmp2);
+	_mm512_store_epi64(v+48, v4);
+
+	__m512i w4 = _mm512_load_epi64(w+48);
+	tmp1 = _mm512_add_epi64(_mm512_mul_epu32(zmm_a1H, zmm_b03),
+							_mm512_mul_epu32(zmm_a1L, zmm_b0b));
+	tmp2 = _mm512_add_epi64(_mm512_mul_epu32(zmm_a0H, zmm_b13),
+							_mm512_mul_epu32(zmm_a0L, zmm_b1b));
+	w4 = _mm512_add_epi64(w4, tmp1);
+	w4 = _mm512_add_epi64(w4, tmp2);
+	_mm512_store_epi64(w+48, w4);
+
+	__m512i v5 = _mm512_load_epi64(v+64);
+	tmp1 = _mm512_add_epi64(_mm512_mul_epu32(zmm_a0H, zmm_b1a),
+							_mm512_mul_epu32(zmm_a1L, zmm_b12));
+	v5 = _mm512_add_epi64(v5, _mm512_mul_epu32(zmm_a1H, zmm_b0a));
+	v5 = _mm512_add_epi64(v5, tmp1);
+	_mm512_store_epi64(v+64, v5);
+
+	__m512i w5 = _mm512_load_epi64(w+64);
+	tmp1 = _mm512_add_epi64(_mm512_mul_epu32(zmm_a0H, zmm_b1b),
+							_mm512_mul_epu32(zmm_a1L, zmm_b13));
+	w5 = _mm512_add_epi64(w5, _mm512_mul_epu32(zmm_a1H, zmm_b0b));
+	w5 = _mm512_add_epi64(w5, tmp1);
+	_mm512_store_epi64(w+64, w5);
+
+	__m512i v6 = _mm512_load_epi64(v+80);
+	tmp1 = _mm512_add_epi64(_mm512_mul_epu32(zmm_a1H, zmm_b12),
+							_mm512_mul_epu32(zmm_a1L, zmm_b1a));
+	v6 = _mm512_add_epi64(v6, tmp1);
+	_mm512_store_epi64(v+80, v6);
+
+	__m512i w6 = _mm512_load_epi64(w+80);
+	tmp1 = _mm512_add_epi64(_mm512_mul_epu32(zmm_a1H, zmm_b13),
+							_mm512_mul_epu32(zmm_a1L, zmm_b1b));
+	w6 = _mm512_add_epi64(w6, tmp1);
+	_mm512_store_epi64(w+80, w6);
+
+	__m512i v7 = _mm512_load_epi64(v+96);
+	v7 = _mm512_add_epi64(v7, _mm512_mul_epu32(zmm_a1H, zmm_b1a));
+	_mm512_store_epi64(v+96, v7);
+
+	__m512i w7 = _mm512_load_epi64(w+96);
+	w7 = _mm512_add_epi64(w7, _mm512_mul_epu32(zmm_a1H, zmm_b1b));
+	_mm512_store_epi64(w+96, w7);
+
+	zmm_444 = _mm512_add_epi64(zmm_333, zmm_111);
+	zmm_ccc = _mm512_add_epi64(zmm_bbb, zmm_111);
+	__m512i zmm_b04 = _mm512_permutexvar_epi32(zmm_444, zmm_b0);
+	__m512i zmm_b0c = _mm512_permutexvar_epi32(zmm_ccc, zmm_b0);
+	__m512i zmm_b14 = _mm512_permutexvar_epi32(zmm_444, zmm_b1);
+	__m512i zmm_b1c = _mm512_permutexvar_epi32(zmm_ccc, zmm_b1);
+	zmm_555 = _mm512_add_epi64(zmm_444, zmm_111);
+	zmm_ddd = _mm512_add_epi64(zmm_ccc, zmm_111);
+	__m512i zmm_b05 = _mm512_permutexvar_epi32(zmm_555, zmm_b0);
+	__m512i zmm_b0d = _mm512_permutexvar_epi32(zmm_ddd, zmm_b0);
+	__m512i zmm_b15 = _mm512_permutexvar_epi32(zmm_555, zmm_b1);
+	__m512i zmm_b1d = _mm512_permutexvar_epi32(zmm_ddd, zmm_b1);
+	__m512i p1 = _mm512_load_epi64(p);
+	p1 = _mm512_add_epi64(p1, _mm512_mul_epu32(zmm_a0L, zmm_b04));
+	_mm512_store_epi64(p, p1);
+
+	__m512i q1 = _mm512_load_epi64(q);
+	q1 = _mm512_add_epi64(q1, _mm512_mul_epu32(zmm_a0L, zmm_b05));
+	_mm512_store_epi64(q, q1);
+
+	__m512i p2 = _mm512_load_epi64(p+16);
+	tmp1 = _mm512_add_epi64(_mm512_mul_epu32(zmm_a0H, zmm_b04),
+							_mm512_mul_epu32(zmm_a0L, zmm_b0c));
+	p2 = _mm512_add_epi64(p2, tmp1);
+	_mm512_store_epi64(p+16, p2);
+
+	__m512i q2 = _mm512_load_epi64(q+16);
+	tmp1 = _mm512_add_epi64(_mm512_mul_epu32(zmm_a0H, zmm_b05),
+							_mm512_mul_epu32(zmm_a0L, zmm_b0d));
+	q2 = _mm512_add_epi64(q2, tmp1);
+	_mm512_store_epi64(q+16, q2);
+
+	__m512i p3 = _mm512_load_epi64(p+32);
+	tmp1 = _mm512_add_epi64(_mm512_mul_epu32(zmm_a0H, zmm_b0c),
+							_mm512_mul_epu32(zmm_a1L, zmm_b04));
+	p3 = _mm512_add_epi64(p3, _mm512_mul_epu32(zmm_a0L, zmm_b14));
+	p3 = _mm512_add_epi64(p3, tmp1);
+	_mm512_store_epi64(p+32, p3);
+
+	__m512i q3 = _mm512_load_epi64(q+32);
+	tmp1 = _mm512_add_epi64(_mm512_mul_epu32(zmm_a0H, zmm_b0d),
+							_mm512_mul_epu32(zmm_a1L, zmm_b05));
+	q3 = _mm512_add_epi64(q3, _mm512_mul_epu32(zmm_a0L, zmm_b15));
+	q3 = _mm512_add_epi64(q3, tmp1);
+	_mm512_store_epi64(q+32, q3);
+
+	__m512i p4 = _mm512_load_epi64(p+48);
+	tmp1 = _mm512_add_epi64(_mm512_mul_epu32(zmm_a1H, zmm_b04),
+							_mm512_mul_epu32(zmm_a1L, zmm_b0c));
+	tmp2 = _mm512_add_epi64(_mm512_mul_epu32(zmm_a0H, zmm_b14),
+							_mm512_mul_epu32(zmm_a0L, zmm_b1c));
+	p4 = _mm512_add_epi64(p4, tmp1);
+	p4 = _mm512_add_epi64(p4, tmp2);
+	_mm512_store_epi64(p+48, p4);
+
+	__m512i q4 = _mm512_load_epi64(q+48);
+	tmp1 = _mm512_add_epi64(_mm512_mul_epu32(zmm_a1H, zmm_b05),
+							_mm512_mul_epu32(zmm_a1L, zmm_b0d));
+	tmp2 = _mm512_add_epi64(_mm512_mul_epu32(zmm_a0H, zmm_b15),
+							_mm512_mul_epu32(zmm_a0L, zmm_b1d));
+	q4 = _mm512_add_epi64(q4, tmp1);
+	q4 = _mm512_add_epi64(q4, tmp2);
+	_mm512_store_epi64(q+48, q4);
+
+	__m512i p5 = _mm512_load_epi64(p+64);
+	tmp1 = _mm512_add_epi64(_mm512_mul_epu32(zmm_a0H, zmm_b1c),
+							_mm512_mul_epu32(zmm_a1L, zmm_b14));
+	p5 = _mm512_add_epi64(p5, _mm512_mul_epu32(zmm_a1H, zmm_b0c));
+	p5 = _mm512_add_epi64(p5, tmp1);
+	_mm512_store_epi64(p+64, p5);
+
+	__m512i q5 = _mm512_load_epi64(q+64);
+	tmp1 = _mm512_add_epi64(_mm512_mul_epu32(zmm_a0H, zmm_b1d),
+							_mm512_mul_epu32(zmm_a1L, zmm_b15));
+	q5 = _mm512_add_epi64(q5, _mm512_mul_epu32(zmm_a1H, zmm_b0d));
+	q5 = _mm512_add_epi64(q5, tmp1);
+	_mm512_store_epi64(q+64, q5);
+
+	__m512i p6 = _mm512_load_epi64(p+80);
+	tmp1 = _mm512_add_epi64(_mm512_mul_epu32(zmm_a1H, zmm_b14),
+							_mm512_mul_epu32(zmm_a1L, zmm_b1c));
+	p6 = _mm512_add_epi64(p6, tmp1);
+	_mm512_store_epi64(p+80, p6);
+
+	__m512i q6 = _mm512_load_epi64(q+80);
+	tmp1 = _mm512_add_epi64(_mm512_mul_epu32(zmm_a1H, zmm_b15),
+							_mm512_mul_epu32(zmm_a1L, zmm_b1d));
+	q6 = _mm512_add_epi64(q6, tmp1);
+	_mm512_store_epi64(q+80, q6);
+
+	__m512i p7 = _mm512_load_epi64(p+96);
+	p7 = _mm512_add_epi64(p7, _mm512_mul_epu32(zmm_a1H, zmm_b1c));
+	_mm512_store_epi64(p+96, p7);
+
+	__m512i q7 = _mm512_load_epi64(q+96);
+	q7 = _mm512_add_epi64(q7, _mm512_mul_epu32(zmm_a1H, zmm_b1d));
+	_mm512_store_epi64(q+96, q7);
+
+	zmm_666 = _mm512_add_epi64(zmm_555, zmm_111);
+	zmm_eee = _mm512_add_epi64(zmm_ddd, zmm_111);
+	__m512i zmm_b06 = _mm512_permutexvar_epi32(zmm_666, zmm_b0);
+	__m512i zmm_b0e = _mm512_permutexvar_epi32(zmm_eee, zmm_b0);
+	__m512i zmm_b16 = _mm512_permutexvar_epi32(zmm_666, zmm_b1);
+	__m512i zmm_b1e = _mm512_permutexvar_epi32(zmm_eee, zmm_b1);
+	zmm_777 = _mm512_add_epi64(zmm_666, zmm_111);
+	zmm_fff = _mm512_add_epi64(zmm_eee, zmm_111);
+	__m512i zmm_b07 = _mm512_permutexvar_epi32(zmm_777, zmm_b0);
+	__m512i zmm_b0f = _mm512_permutexvar_epi32(zmm_fff, zmm_b0);
+	__m512i zmm_b17 = _mm512_permutexvar_epi32(zmm_777, zmm_b1);
+	__m512i zmm_b1f = _mm512_permutexvar_epi32(zmm_fff, zmm_b1);
+	__m512i r1 = _mm512_load_epi64(r);
+	r1 = _mm512_add_epi64(r1, _mm512_mul_epu32(zmm_a0L, zmm_b06));
+	_mm512_store_epi64(r, r1);
+
+	__m512i s1 = _mm512_load_epi64(s);
+	s1 = _mm512_add_epi64(s1, _mm512_mul_epu32(zmm_a0L, zmm_b07));
+	_mm512_store_epi64(s, s1);
+
+	__m512i r2 = _mm512_load_epi64(r+16);
+	tmp1 = _mm512_add_epi64(_mm512_mul_epu32(zmm_a0H, zmm_b06),
+							_mm512_mul_epu32(zmm_a0L, zmm_b0e));
+	r2 = _mm512_add_epi64(r2, tmp1);
+	_mm512_store_epi64(r+16, r2);
+
+	__m512i s2 = _mm512_load_epi64(s+16);
+	tmp1 = _mm512_add_epi64(_mm512_mul_epu32(zmm_a0H, zmm_b07),
+							_mm512_mul_epu32(zmm_a0L, zmm_b0f));
+	s2 = _mm512_add_epi64(s2, tmp1);
+	_mm512_store_epi64(s+16, s2);
+
+	__m512i r3 = _mm512_load_epi64(r+32);
+	tmp1 = _mm512_add_epi64(_mm512_mul_epu32(zmm_a0H, zmm_b0e),
+							_mm512_mul_epu32(zmm_a1L, zmm_b06));
+	r3 = _mm512_add_epi64(r3, _mm512_mul_epu32(zmm_a0L, zmm_b16));
+	r3 = _mm512_add_epi64(r3, tmp1);
+	_mm512_store_epi64(r+32, r3);
+
+	__m512i s3 = _mm512_load_epi64(s+32);
+	tmp1 = _mm512_add_epi64(_mm512_mul_epu32(zmm_a0H, zmm_b0f),
+							_mm512_mul_epu32(zmm_a1L, zmm_b07));
+	s3 = _mm512_add_epi64(s3, _mm512_mul_epu32(zmm_a0L, zmm_b17));
+	s3 = _mm512_add_epi64(s3, tmp1);
+	_mm512_store_epi64(s+32, s3);
+
+	__m512i r4 = _mm512_load_epi64(r+48);
+	tmp1 = _mm512_add_epi64(_mm512_mul_epu32(zmm_a1H, zmm_b06),
+							_mm512_mul_epu32(zmm_a1L, zmm_b0e));
+	tmp2 = _mm512_add_epi64(_mm512_mul_epu32(zmm_a0H, zmm_b16),
+							_mm512_mul_epu32(zmm_a0L, zmm_b1e));
+	r4 = _mm512_add_epi64(r4, tmp1);
+	r4 = _mm512_add_epi64(r4, tmp2);
+	_mm512_store_epi64(r+48, r4);
+
+	__m512i s4 = _mm512_load_epi64(s+48);
+	tmp1 = _mm512_add_epi64(_mm512_mul_epu32(zmm_a1H, zmm_b07),
+							_mm512_mul_epu32(zmm_a1L, zmm_b0f));
+	tmp2 = _mm512_add_epi64(_mm512_mul_epu32(zmm_a0H, zmm_b17),
+							_mm512_mul_epu32(zmm_a0L, zmm_b1f));
+	s4 = _mm512_add_epi64(s4, tmp1);
+	s4 = _mm512_add_epi64(s4, tmp2);
+	_mm512_store_epi64(s+48, s4);
+
+	__m512i r5 = _mm512_load_epi64(r+64);
+	tmp1 = _mm512_add_epi64(_mm512_mul_epu32(zmm_a0H, zmm_b1e),
+							_mm512_mul_epu32(zmm_a1L, zmm_b16));
+	r5 = _mm512_add_epi64(r5, _mm512_mul_epu32(zmm_a1H, zmm_b0e));
+	r5 = _mm512_add_epi64(r5, tmp1);
+	_mm512_store_epi64(r+64, r5);
+
+	__m512i s5 = _mm512_load_epi64(s+64);
+	tmp1 = _mm512_add_epi64(_mm512_mul_epu32(zmm_a0H, zmm_b1f),
+							_mm512_mul_epu32(zmm_a1L, zmm_b17));
+	s5 = _mm512_add_epi64(s5, _mm512_mul_epu32(zmm_a1H, zmm_b0f));
+	s5 = _mm512_add_epi64(s5, tmp1);
+	_mm512_store_epi64(s+64, s5);
+
+	__m512i r6 = _mm512_load_epi64(r+80);
+	tmp1 = _mm512_add_epi64(_mm512_mul_epu32(zmm_a1H, zmm_b16),
+							_mm512_mul_epu32(zmm_a1L, zmm_b1e));
+	r6 = _mm512_add_epi64(r6, tmp1);
+	_mm512_store_epi64(r+80, r6);
+
+	__m512i s6 = _mm512_load_epi64(s+80);
+	tmp1 = _mm512_add_epi64(_mm512_mul_epu32(zmm_a1H, zmm_b17),
+							_mm512_mul_epu32(zmm_a1L, zmm_b1f));
+	s6 = _mm512_add_epi64(s6, tmp1);
+	_mm512_store_epi64(s+80, s6);
+
+	__m512i r7 = _mm512_load_epi64(r+96);
+	r7 = _mm512_add_epi64(r7, _mm512_mul_epu32(zmm_a1H, zmm_b1e));
+	_mm512_store_epi64(r+96, r7);
+
+	__m512i s7 = _mm512_load_epi64(s+96);
+	s7 = _mm512_add_epi64(s7, _mm512_mul_epu32(zmm_a1H, zmm_b1f));
+	_mm512_store_epi64(s+96, s7);
 
-	long index_outer, index_inner, rdi;
-
-	for(index_outer = 0; index_outer < DIGITS; index_outer += 16){
-
-		__asm__ volatile(
-			// load b[i] ... b[i+7]
-			"vmovdqu32 (%0, %1, 4), %%zmm1;"
-	
-		
-			// load t[8-15], u[8-15], u[0-7], t[0-7], respectively
-			"vmovdqu64 64(%2, %1, 8), %%zmm10;" //latter t
-			"vmovdqu64 64(%3, %1, 8), %%zmm11;" //latter u
-			"vmovdqu64 64(%4, %1, 8), %%zmm12;" //latter v
-			"vmovdqu64 64(%5, %1, 8), %%zmm13;" //latter w
-			"vmovdqu64 64(%6, %1, 8), %%zmm14;" //latter p
-			"vmovdqu64 64(%7, %1, 8), %%zmm15;" //latter q
-			"vmovdqu64 64(%8, %1, 8), %%zmm16;" //latter r
-			"vmovdqu64 64(%9, %1, 8), %%zmm17;" //latter s
-
-
-			"vmovdqu64 (%2, %1, 8), %%zmm18;" //former t
-			"vmovdqu64 (%3, %1, 8), %%zmm19;" //former u
-			"vmovdqu64 (%4, %1, 8), %%zmm20;" //former v
-			"vmovdqu64 (%5, %1, 8), %%zmm21;" //former w
-			"vmovdqu64 (%6, %1, 8), %%zmm22;" //former p
-			"vmovdqu64 (%7, %1, 8), %%zmm23;" //former q
-			"vmovdqu64 (%8, %1, 8), %%zmm24;" //former r
-			"vmovdqu64 (%9, %1, 8), %%zmm25;" //former s
-		
-
-			::"r"(b), "r"(index_outer), "r"(t), "r"(u), "r"(v), "r"(w), "r"(p), "r"(q), "r"(r), "r"(s)
-		);
-
-
-		index_inner = multiply_inner(a, t, u, v, w, p, q, r, s, index_outer);
-
-		rdi = index_inner + index_outer;
-
-		__asm__ volatile(
-			"vmovdqu64 %%zmm18, 128(%1, %0, 8);"
-			"vmovdqu64 %%zmm19, 128(%2, %0, 8);"	
-			"vmovdqu64 %%zmm20, 128(%3, %0, 8);"
-			"vmovdqu64 %%zmm21, 128(%4, %0, 8);"
-			"vmovdqu64 %%zmm22, 128(%5, %0, 8);"
-			"vmovdqu64 %%zmm23, 128(%6, %0, 8);"	
-			"vmovdqu64 %%zmm24, 128(%7, %0, 8);"
-			"vmovdqu64 %%zmm25, 128(%8, %0, 8);"
-			::"r"(rdi), "r"(t), "r"(u), "r"(v), "r"(w), "r"(p), "r"(q), "r"(r), "r"(s)
-		);
-		
-	}
-}
-
-
-
-long multiply_inner(unsigned int* a, unsigned int* t, unsigned int* u, unsigned int* v, unsigned int* w, unsigned int* p, unsigned int* q, unsigned int* r, unsigned int* s, long index_outer){
-
-
-	long index_inner;
-	for(index_inner = 0; index_inner < DIGITS; index_inner += 16){
-
-		long index = index_inner + index_outer;
-
-		// load a[j] ... a[j+15]
-		__asm__ volatile(
-			"vmovdqu32 (%0, %1, 4), %%zmm0;"
-			::"r"(a), "r"(index_inner)
-		);
-
-	// zmm31 ... vperm index
-	__asm__ volatile(
-
-		"vpxorq %zmm31, %zmm31, %zmm31;"
-		"vpermd %zmm1, %zmm31, %zmm3;" // 0000000000000000
-		"vpaddq %zmm26, %zmm30, %zmm31;"
-		"vpermd %zmm0, %zmm31, %zmm2;" // 0f0e0d0c0b0a0908
-		
-		"vpaddq %zmm27, %zmm28, %zmm31;"
-
-		"vpermd %zmm1, %zmm27, %zmm4;" // 0101010101010101	
-		"vpermd %zmm1, %zmm28, %zmm5;" // 0202020202020202
-		"vpermd %zmm1, %zmm31, %zmm6;" // 0303030303030303
-		
-		"vpmuludq %zmm3, %zmm2, %zmm7;" //mul A
-		"vpmuludq %zmm4, %zmm2, %zmm8;" //mul B
-		"vpmuludq %zmm5, %zmm2, %zmm9;" //mul C	
-		"vpmuludq %zmm6, %zmm2, %zmm2;" //mul D
-
-
-		"vpaddq %zmm7, %zmm10, %zmm10;" //add A
-		"vpaddq %zmm8, %zmm11, %zmm11;" //add B
-		"vpaddq %zmm9, %zmm12, %zmm12;" //add C
-		"vpaddq %zmm2, %zmm13, %zmm13;" //add D
-	);
-
-	__asm__ volatile(
-		"vpermd %%zmm0, %%zmm26, %%zmm2;" // 0706050403020100
-		"vpxorq %%zmm31, %%zmm31, %%zmm31;"
-		"vpermd %%zmm1, %%zmm31, %%zmm3;" // 000000000000000
-
-		"vpmuludq %%zmm6, %%zmm2, %%zmm7;" //mul E
-		"vpmuludq %%zmm5, %%zmm2, %%zmm8;" //mul F
-		"vpmuludq %%zmm4, %%zmm2, %%zmm9;" //mul G
-		"vpmuludq %%zmm3, %%zmm2, %%zmm3;" //mul H
-
-		"vpaddq %%zmm7, %%zmm21, %%zmm21;" //add E
-		"vpaddq %%zmm8, %%zmm20, %%zmm20;" //add F
-		"vpaddq %%zmm9, %%zmm19, %%zmm19;" //add G
-		"vpaddq %%zmm3, %%zmm18, %%zmm18;" //add H
-
-		"vmovdqu64 %%zmm21, (%1, %0, 8);"
-		"vmovdqu64 %%zmm20, (%2, %0, 8);"
-		"vmovdqu64 %%zmm19, (%3, %0, 8);"
-		"vmovdqu64 %%zmm18, (%4, %0, 8);"
-		
-		"vmovdqu64 128(%1, %0, 8), %%zmm21;" //128 = sizeof(long)(i.e., 8) * 16
-		"vmovdqu64 128(%2, %0, 8), %%zmm20;"
-		"vmovdqu64 128(%3, %0, 8), %%zmm19;"
-		"vmovdqu64 128(%4, %0, 8), %%zmm18;"
-
-		::"r"(index), "r"(w), "r"(v), "r"(u), "r"(t)
-	);
-
-	__asm__ volatile(
-		"vpermd %%zmm1, %%zmm30, %%zmm3;" // 0808080808080808
-		"vpaddq %%zmm27, %%zmm30, %%zmm31;"
-		
-		"vpmuludq %%zmm3, %%zmm2, %%zmm7;" //mul I
-
-		"vpermd %%zmm1, %%zmm31, %%zmm4;" // 0909090909090909
-		"vpaddq %%zmm27, %%zmm31, %%zmm31;"
-		
-		"vpmuludq %%zmm4, %%zmm2, %%zmm8;" //mul J
-
-		"vpermd %%zmm1, %%zmm31, %%zmm5;" // 0a0a0a0a0a0a0a0a
-		"vpaddq %%zmm27, %%zmm31, %%zmm31;"
-		
-		"vpmuludq %%zmm5, %%zmm2, %%zmm9;" //mul K
-
-		"vpermd %%zmm1, %%zmm31, %%zmm6;" // 0b0b0b0b0b0b0b0b
-
-		"vpmuludq %%zmm6, %%zmm2, %%zmm2;" //mul L
-		
-		"vpaddq %%zmm7, %%zmm10, %%zmm10;" //add I
-		"vpaddq %%zmm8, %%zmm11, %%zmm11;" //add J
-		"vpaddq %%zmm9, %%zmm12, %%zmm12;" //add K
-		"vpaddq %%zmm2, %%zmm13, %%zmm13;" //add L
-
-		"vmovdqu64 %%zmm10, 64(%1, %0, 8);"
-		"vmovdqu64 %%zmm11, 64(%2, %0, 8);"
-		"vmovdqu64 %%zmm12, 64(%3, %0, 8);"
-		"vmovdqu64 %%zmm13, 64(%4, %0, 8);"
-
-		"vmovdqu64 192(%1, %0, 8), %%zmm10;"
-		"vmovdqu64 192(%2, %0, 8), %%zmm11;"
-		"vmovdqu64 192(%3, %0, 8), %%zmm12;"
-		"vmovdqu64 192(%4, %0, 8), %%zmm13;"
-
-		::"r"(index), "r"(t), "r"(u), "r"(v), "r"(w)
-	);
-
-
-	__asm__ volatile(	
-		"vpaddq %zmm26, %zmm30, %zmm31;"
-		"vpermd %zmm0, %zmm31, %zmm2;" // 0f0e0d0c0b0a0908
-
-		"vpmuludq %zmm6, %zmm2, %zmm7;" //mul M
-		"vpmuludq %zmm5, %zmm2, %zmm8;" //mul N
-		"vpmuludq %zmm4, %zmm2, %zmm9;" //mul O
-		"vpmuludq %zmm3, %zmm2, %zmm3;" //mul P
-
-		"vpaddq %zmm7, %zmm21, %zmm21;" //add M
-		"vpaddq %zmm8, %zmm20, %zmm20;" //add N
-		"vpaddq %zmm9, %zmm19, %zmm19;" //add O
-		"vpaddq %zmm3, %zmm18, %zmm18;" //add P
-	);
-
-	__asm__ volatile(
-		"vpermd %zmm1, %zmm29, %zmm3;" //0404040404040404
-		"vpaddq %zmm29, %zmm27, %zmm31;"
-
-		"vpmuludq %zmm3, %zmm2, %zmm7;" //mul a
-
-		"vpermd %zmm1, %zmm31, %zmm4;" //0505050505050505
-		"vpaddq %zmm27, %zmm31, %zmm31;"
-
-		"vpmuludq %zmm4, %zmm2, %zmm8;" //mul b
-
-		"vpermd %zmm1, %zmm31, %zmm5;" //0606060606060606
-		"vpaddq %zmm27, %zmm31, %zmm31;"
-
-		"vpmuludq %zmm5, %zmm2, %zmm9;" //mul c
-
-		"vpermd %zmm1, %zmm31, %zmm6;" //0707070707070707
-
-
-		"vpaddq %zmm7, %zmm14, %zmm14;" //add a
-		"vpmuludq %zmm6, %zmm2, %zmm2;" //mul d
-		"vpaddq %zmm8, %zmm15, %zmm15;" //add b
-		"vpaddq %zmm9, %zmm16, %zmm16;" //add c
-		"vpaddq %zmm2, %zmm17, %zmm17;" //add d
-	);
-	
-	__asm__ volatile(
-		"vpermd %%zmm0, %%zmm26, %%zmm2;" //0706050403020100
-
-		"vpmuludq %%zmm6, %%zmm2, %%zmm7;" //mul e
-		"vpmuludq %%zmm5, %%zmm2, %%zmm8;" //mul f
-		"vpmuludq %%zmm4, %%zmm2, %%zmm9;" //mul g
-		"vpmuludq %%zmm2, %%zmm3, %%zmm3;" //mul h
-
-		"vpaddq %%zmm7, %%zmm25, %%zmm25;" //add e
-		"vpaddq %%zmm8, %%zmm24, %%zmm24;" //add f
-		"vpaddq %%zmm9, %%zmm23, %%zmm23;" //add g
-		"vpaddq %%zmm3, %%zmm22, %%zmm22;" //add h
-
-		"vmovdqu64 %%zmm25, (%1, %0, 8);"
-		"vmovdqu64 %%zmm24, (%2, %0, 8);"
-		"vmovdqu64 %%zmm23, (%3, %0, 8);"
-		"vmovdqu64 %%zmm22, (%4, %0, 8);"		
-		
-		"vmovdqu64 128(%1, %0, 8), %%zmm25;" //128 = sizeof(long)(i.e., 8) * 16
-		"vmovdqu64 128(%2, %0, 8), %%zmm24;"
-		"vmovdqu64 128(%3, %0, 8), %%zmm23;"
-		"vmovdqu64 128(%4, %0, 8), %%zmm22;"
-
-		::"r"(index), "r"(s), "r"(r), "r"(q), "r"(p)
-	);
-
-	__asm__ volatile(
-		"vpaddq %%zmm30, %%zmm29, %%zmm31;"
-		"vpermd %%zmm1, %%zmm31, %%zmm3;" // 0c0c0c0c0c0c0c0c
-		"vpaddq %%zmm31, %%zmm27, %%zmm31;"
-		
-		"vpmuludq %%zmm3, %%zmm2, %%zmm7;" //mul i
-		
-		"vpermd %%zmm1, %%zmm31, %%zmm4;" // 0d0d0d0d0d0d0d0d
-		"vpaddq %%zmm27, %%zmm31, %%zmm31;"
-		
-		"vpmuludq %%zmm4, %%zmm2, %%zmm8;" //mul j
-		
-		"vpermd %%zmm1, %%zmm31, %%zmm5;" // 0e0e0e0e0e0e0e0e
-		"vpaddq %%zmm27, %%zmm31, %%zmm31;"
-		
-		"vpmuludq %%zmm5, %%zmm2, %%zmm9;" //mul k
-		
-		"vpermd %%zmm1, %%zmm31, %%zmm6;" // 0f0f0f0f0f0f0f0f
-
-		"vpmuludq %%zmm6, %%zmm2, %%zmm2;" //mul l
-
-		"vpaddq %%zmm7, %%zmm14, %%zmm14;" //add i
-		"vpaddq %%zmm8, %%zmm15, %%zmm15;" //add j
-		"vpaddq %%zmm9, %%zmm16, %%zmm16;" //add k
-		"vpaddq %%zmm2, %%zmm17, %%zmm17;" //add l
-
-		"vmovdqu64 %%zmm14, 64(%1, %0, 8);"
-		"vmovdqu64 %%zmm15, 64(%2, %0, 8);"
-		"vmovdqu64 %%zmm16, 64(%3, %0, 8);"
-		"vmovdqu64 %%zmm17, 64(%4, %0, 8);"
-
-		"vmovdqu64 192(%1, %0, 8), %%zmm14;"
-		"vmovdqu64 192(%2, %0, 8), %%zmm15;"
-		"vmovdqu64 192(%3, %0, 8), %%zmm16;"
-		"vmovdqu64 192(%4, %0, 8), %%zmm17;"
-
-		::"r"(index), "r"(p), "r"(q), "r"(r), "r"(s)
-	);
-
-	__asm__ volatile(	
-		"vpaddq %zmm26, %zmm30, %zmm31;"
-		"vpermd %zmm0, %zmm31, %zmm2;" // 0f0e0d0c0b0a0908
-		
-		"vpmuludq %zmm6, %zmm2, %zmm7;" //mul m
-		"vpmuludq %zmm5, %zmm2, %zmm8;" //mul n
-		"vpmuludq %zmm4, %zmm2, %zmm9;" //mul o
-		"vpmuludq %zmm3, %zmm2, %zmm3;" //mul p
-
-		"vpaddq %zmm7, %zmm25, %zmm25;" //add m
-		"vpaddq %zmm8, %zmm24, %zmm24;" //add n
-		"vpaddq %zmm9, %zmm23, %zmm23;" //add o
-		"vpaddq %zmm3, %zmm22, %zmm22;" //add p
-	);
-	}
-
-	// subtract extra 16 which is added in "for" expression. 
-	return index_inner - 16;
-}
-
-
-void calc_carry(unsigned int* t, unsigned int* u, unsigned int* v, unsigned int* w, unsigned int* p, unsigned int* q, unsigned int* r, unsigned int* s){
-
-
-/*
-	  in this routine,
-	  mm7 : 0x1fffffff
-	  mm6 : carry
-	  mm0 : t
-	  mm1 : u
-	  mm2 : v
-	  mm3 : w
-	 */
-
-	 __asm__ volatile(
-		"pxor %%mm6, %%mm6;"
-		"mov $0x1fffffff, %%eax;"
-		"movd %%eax, %%mm7;"
-		//[0]
-		"movq (%0), %%mm0;"
-		"movq %%mm0, %%mm6;"
-		"pand %%mm7, %%mm0;"
-		"movd %%mm0, (%0);"
-		"psrlq $29, %%mm6;"
-		
-		"mov $1, %%rbx;"
-		//[1]
-		"movq (%0, %%rbx, 8), %%mm0;"
-		"movq -8(%1, %%rbx, 8), %%mm1;"
-		"paddq %%mm1, %%mm0;"
-		"paddq %%mm6, %%mm0;"
-		"movq %%mm0, %%mm6;"
-		"pand %%mm7, %%mm6;"
-		"movd %%mm6, (%0, %%rbx, 4);"
-		"psrlq $29, %%mm0;"
-	
-		"inc %%ebx;"
-		//[2]
-		"movq (%0, %%rbx, 8), %%mm6;"
-		"movq -8(%1, %%rbx, 8), %%mm1;"
-		"movq -16(%2, %%rbx, 8), %%mm2;"
-		"paddq %%mm1, %%mm6;"
-		"paddq %%mm2, %%mm6;"
-		"paddq %%mm0, %%mm6;"
-		"movq %%mm6, %%mm0;"
-		"pand %%mm7, %%mm0;"
-		"movd %%mm0, (%0, %%rbx, 4);"
-		"psrlq $29, %%mm6;"
-
-		"inc %%ebx;"
-		//[3]
-		"movq (%0, %%rbx, 8), %%mm0;"
-		"movq -8(%1, %%rbx, 8), %%mm1;"
-		"movq -16(%2, %%rbx, 8), %%mm2;"
-		"movq -24(%3, %%rbx, 8), %%mm3;"
-		"paddq %%mm6, %%mm0;"
-		"paddq %%mm1, %%mm0;"
-		"paddq %%mm2, %%mm0;"
-		"paddq %%mm3, %%mm0;"
-		"movq %%mm0, %%mm6;"
-		"pand %%mm7, %%mm6;"
-		"movd %%mm6, (%0, %%rbx, 4);"
-		"psrlq $29, %%mm0;"
-
-		"inc %%ebx;"
-		//[4]
-		"movq (%0, %%rbx, 8), %%mm6;"
-		"movq -8(%1, %%rbx, 8), %%mm1;"
-		"movq -16(%2, %%rbx, 8), %%mm2;"
-		"movq -24(%3, %%rbx, 8), %%mm3;"
-		"movq -32(%4, %%rbx, 8), %%mm4;"
-		"paddq %%mm0, %%mm6;"
-		"paddq %%mm1, %%mm6;"
-		"paddq %%mm2, %%mm6;"
-		"paddq %%mm3, %%mm6;"
-		"paddq %%mm4, %%mm6;"
-		"movq %%mm6, %%mm0;"
-		"pand %%mm7, %%mm0;"
-		"movd %%mm0, (%0, %%rbx, 4);"
-		"psrlq $29, %%mm6;"
-
-		"inc %%ebx;"
-		//[5]
-		"movq (%0, %%rbx, 8), %%mm0;"
-		"movq -8(%1, %%rbx, 8), %%mm1;"
-		"movq -16(%2, %%rbx, 8), %%mm2;"
-		"movq -24(%3, %%rbx, 8), %%mm3;"
-		"movq -32(%4, %%rbx, 8), %%mm4;"
-		"movq -40(%5, %%rbx, 8), %%mm5;"
-		"paddq %%mm6, %%mm0;"
-		"paddq %%mm1, %%mm0;"
-		"paddq %%mm2, %%mm0;"
-		"paddq %%mm3, %%mm0;"
-		"paddq %%mm4, %%mm0;"
-		"paddq %%mm5, %%mm0;"
-		"movq %%mm0, %%mm6;"
-		"pand %%mm7, %%mm6;"
-		"movd %%mm6, (%0, %%rbx, 4);"
-		"psrlq $29, %%mm0;"
-
-		"inc %%ebx;"
-		//[6]
-		"movq (%0, %%rbx, 8), %%mm6;"
-		"movq -8(%1, %%rbx, 8), %%mm1;"
-		"movq -16(%2, %%rbx, 8), %%mm2;"
-		"movq -24(%3, %%rbx, 8), %%mm3;"
-		"movq -32(%4, %%rbx, 8), %%mm4;"
-		"movq -40(%5, %%rbx, 8), %%mm5;"
-		"paddq %%mm0, %%mm6;"
-		"paddq %%mm1, %%mm6;"
-		"movq -48(%6, %%rbx, 8), %%mm1;" //r
-		"paddq %%mm2, %%mm6;"
-		"paddq %%mm3, %%mm6;"
-		"paddq %%mm4, %%mm6;"
-		"paddq %%mm5, %%mm6;"
-		"paddq %%mm1, %%mm6;" //r
-		"movq %%mm6, %%mm0;"
-		"pand %%mm7, %%mm0;"
-		"movd %%mm0, (%0, %%rbx, 4);"
-		"psrlq $29, %%mm6;"
-
-		::"r"(t), "r"(u), "r"(v), "r"(w), "r"(p), "r"(q), "r"(r)
-		:"%rax", "%rbx"
-	);
-
-	
-	cloop(t, u, v, w, p, q, r, s);
-	
-
-	long rbx = DIGITSTIMESTWO - 1;
-
-	__asm__ volatile(
-		"movd %%mm6, (%0, %1, 4);"
-		::"r"(t), "r"(rbx)
-	);
-}
-
-
-
-void cloop(unsigned int* t, unsigned int* u, unsigned int* v, unsigned int* w, unsigned int* p, unsigned int* q, unsigned int* r, unsigned int* s){
-
-	long i;
-	for(i=7; i<=DIGITSTIMESTWO; i+=2){
-
-		__asm__ volatile(
-			"movq (%1, %0, 8), %%mm0;"
-			"movq -8(%2, %0, 8), %%mm1;"
-			"movq -16(%3, %0, 8), %%mm2;"
-			"movq -24(%4, %0, 8), %%mm3;"
-			"movq -32(%5, %0, 8), %%mm4;"
-			"movq -40(%6, %0, 8), %%mm5;"
-			"paddq %%mm1, %%mm0;"
-			"movq -48(%7, %0, 8), %%mm1;" //r
-			"paddq %%mm2, %%mm0;"
-			"movq -56(%8, %0, 8), %%mm2;" //s
-			"paddq %%mm3, %%mm0;"
-			"paddq %%mm4, %%mm0;"
-			"paddq %%mm5, %%mm0;"
-			"paddq %%mm1, %%mm0;" //r
-			"paddq %%mm2, %%mm0;" //s
-			"paddq %%mm6, %%mm0;"
-			"movq %%mm0, %%mm6;"
-			"pand %%mm7, %%mm6;"
-			"movd %%mm6, (%1, %0, 4);"
-			"psrlq $29, %%mm0;"
-
-
-			"movq 8(%1, %0, 8), %%mm6;"
-			"movq (%2, %0, 8), %%mm1;"
-			"movq -8(%3, %0, 8), %%mm2;"
-			"movq -16(%4, %0, 8), %%mm3;"
-			"movq -24(%5, %0, 8), %%mm4;"
-			"movq -32(%6, %0, 8), %%mm5;"
-			"paddq %%mm1, %%mm6;"
-			"movq -40(%7, %0, 8), %%mm1;" //r
-			"paddq %%mm2, %%mm6;"
-			"movq -48(%8, %0, 8), %%mm2;" //s
-			"paddq %%mm3, %%mm6;"
-			"paddq %%mm4, %%mm6;"
-			"paddq %%mm5, %%mm6;"
-			"paddq %%mm1, %%mm6;" //r
-			"paddq %%mm2, %%mm6;" //s
-			"paddq %%mm0, %%mm6;"
-			"movq %%mm6, %%mm0;"
-			"pand %%mm7, %%mm0;"
-			"movd %%mm0, 4(%1, %0, 4);"
-			"psrlq $29, %%mm6;"
-
-			::"r"(i), "r"(t), "r"(u), "r"(v), "r"(w), "r"(p), "r"(q), "r"(r), "r"(s)
-		);
-	}
 }

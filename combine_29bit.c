@@ -2,15 +2,15 @@
 
 #include "zmm_mul.h"
 
-void combine_29bit(unsigned int* data, unsigned int* result){
+void combine_29bit(unsigned int* data, unsigned int* result, int digits){
 
     int index, i, j;
 
     //下記for文で29通りの組み合わせがあるため。29bitという意味ではない
-    const int LIMIT = (2*N) / 29;
+    int LIMIT = (2*digits) / 29;
 
     //あまりの組み合わせ処理用
-    const int REM = 2*N - 29 * LIMIT;
+    int REM = 2*digits - 29 * LIMIT;
     
     for(index = 0; index < LIMIT; index++){
 
