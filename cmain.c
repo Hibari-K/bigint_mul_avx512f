@@ -62,11 +62,6 @@ int main(int argc, char** argv){
 	hbw_free(PTR(a));
 	hbw_free(PTR(b));
 	hbw_free(PTR(t));
-    free(A);
-    free(B);
-    free(T);
-	free(str1);
-	free(str2);
     
     return 0;
 }
