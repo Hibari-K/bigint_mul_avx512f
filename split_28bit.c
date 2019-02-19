@@ -27,7 +27,6 @@ void split_28bit(unsigned int* data, unsigned int* result, int SPLITDIGITS){
 	      xmm10: result
 	    */
 		for(rdi=0, rsi=0; rsi<=SPLITDIGITS; rdi+=14, rsi+=2){
-		//for(rdi=0, rsi=0; rsi<=digits; rdi+=14, rsi+=2){
 
 			__asm__ volatile(
 			    "movdqu (%0, %1), %%xmm0;"

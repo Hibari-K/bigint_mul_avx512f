@@ -66,71 +66,71 @@ void multiply_outer(unsigned int* a, unsigned int* b, unsigned int* t, unsigned 
 
 	__m512i t2 = _mm512_load_epi64(t+16);
 	tmp1 = _mm512_add_epi64(_mm512_mul_epu32(zmm_a0H, zmm_b00),
-							_mm512_mul_epu32(zmm_a0L, zmm_b08));
+	                        _mm512_mul_epu32(zmm_a0L, zmm_b08));
 	t2 = _mm512_add_epi64(t2, tmp1);
 	_mm512_store_epi64(t+16, t2);
 
 	__m512i u2 = _mm512_load_epi64(u+16);
 	tmp1 = _mm512_add_epi64(_mm512_mul_epu32(zmm_a0H, zmm_b01),
-							_mm512_mul_epu32(zmm_a0L, zmm_b09));
+	                        _mm512_mul_epu32(zmm_a0L, zmm_b09));
 	u2 = _mm512_add_epi64(u2, tmp1);
 	_mm512_store_epi64(u+16, u2);
 
 	__m512i t3 = _mm512_load_epi64(t+32);
 	tmp1 = _mm512_add_epi64(_mm512_mul_epu32(zmm_a0H, zmm_b08),
-							_mm512_mul_epu32(zmm_a1L, zmm_b00));
+	                        _mm512_mul_epu32(zmm_a1L, zmm_b00));
 	t3 = _mm512_add_epi64(t3, _mm512_mul_epu32(zmm_a0L, zmm_b10));
 	t3 = _mm512_add_epi64(t3, tmp1);
 	_mm512_store_epi64(t+32, t3);
 
 	__m512i u3 = _mm512_load_epi64(u+32);
 	tmp1 = _mm512_add_epi64(_mm512_mul_epu32(zmm_a0H, zmm_b09),
-							_mm512_mul_epu32(zmm_a1L, zmm_b01));
+	                        _mm512_mul_epu32(zmm_a1L, zmm_b01));
 	u3 = _mm512_add_epi64(u3, _mm512_mul_epu32(zmm_a0L, zmm_b11));
 	u3 = _mm512_add_epi64(u3, tmp1);
 	_mm512_store_epi64(u+32, u3);
 
 	__m512i t4 = _mm512_load_epi64(t+48);
 	tmp1 = _mm512_add_epi64(_mm512_mul_epu32(zmm_a1H, zmm_b00),
-							_mm512_mul_epu32(zmm_a1L, zmm_b08));
+	                        _mm512_mul_epu32(zmm_a1L, zmm_b08));
 	tmp2 = _mm512_add_epi64(_mm512_mul_epu32(zmm_a0H, zmm_b10),
-							_mm512_mul_epu32(zmm_a0L, zmm_b18));
+	                        _mm512_mul_epu32(zmm_a0L, zmm_b18));
 	t4 = _mm512_add_epi64(t4, tmp1);
 	t4 = _mm512_add_epi64(t4, tmp2);
 	_mm512_store_epi64(t+48, t4);
 
 	__m512i u4 = _mm512_load_epi64(u+48);
 	tmp1 = _mm512_add_epi64(_mm512_mul_epu32(zmm_a1H, zmm_b01),
-							_mm512_mul_epu32(zmm_a1L, zmm_b09));
+	                        _mm512_mul_epu32(zmm_a1L, zmm_b09));
 	tmp2 = _mm512_add_epi64(_mm512_mul_epu32(zmm_a0H, zmm_b11),
-							_mm512_mul_epu32(zmm_a0L, zmm_b19));
+	                        _mm512_mul_epu32(zmm_a0L, zmm_b19));
 	u4 = _mm512_add_epi64(u4, tmp1);
 	u4 = _mm512_add_epi64(u4, tmp2);
 	_mm512_store_epi64(u+48, u4);
 
 	__m512i t5 = _mm512_load_epi64(t+64);
 	tmp1 = _mm512_add_epi64(_mm512_mul_epu32(zmm_a0H, zmm_b18),
-							_mm512_mul_epu32(zmm_a1L, zmm_b10));
+	                        _mm512_mul_epu32(zmm_a1L, zmm_b10));
 	t5 = _mm512_add_epi64(t5, _mm512_mul_epu32(zmm_a1H, zmm_b08));
 	t5 = _mm512_add_epi64(t5, tmp1);
 	_mm512_store_epi64(t+64, t5);
 
 	__m512i u5 = _mm512_load_epi64(u+64);
 	tmp1 = _mm512_add_epi64(_mm512_mul_epu32(zmm_a0H, zmm_b19),
-							_mm512_mul_epu32(zmm_a1L, zmm_b11));
+	                        _mm512_mul_epu32(zmm_a1L, zmm_b11));
 	u5 = _mm512_add_epi64(u5, _mm512_mul_epu32(zmm_a1H, zmm_b09));
 	u5 = _mm512_add_epi64(u5, tmp1);
 	_mm512_store_epi64(u+64, u5);
 
 	__m512i t6 = _mm512_load_epi64(t+80);
 	tmp1 = _mm512_add_epi64(_mm512_mul_epu32(zmm_a1H, zmm_b10),
-							_mm512_mul_epu32(zmm_a1L, zmm_b18));
+	                        _mm512_mul_epu32(zmm_a1L, zmm_b18));
 	t6 = _mm512_add_epi64(t6, tmp1);
 	_mm512_store_epi64(t+80, t6);
 
 	__m512i u6 = _mm512_load_epi64(u+80);
 	tmp1 = _mm512_add_epi64(_mm512_mul_epu32(zmm_a1H, zmm_b11),
-							_mm512_mul_epu32(zmm_a1L, zmm_b19));
+	                        _mm512_mul_epu32(zmm_a1L, zmm_b19));
 	u6 = _mm512_add_epi64(u6, tmp1);
 	_mm512_store_epi64(u+80, u6);
 
@@ -164,71 +164,71 @@ void multiply_outer(unsigned int* a, unsigned int* b, unsigned int* t, unsigned 
 
 	__m512i v2 = _mm512_load_epi64(v+16);
 	tmp1 = _mm512_add_epi64(_mm512_mul_epu32(zmm_a0H, zmm_b02),
-							_mm512_mul_epu32(zmm_a0L, zmm_b0a));
+	                        _mm512_mul_epu32(zmm_a0L, zmm_b0a));
 	v2 = _mm512_add_epi64(v2, tmp1);
 	_mm512_store_epi64(v+16, v2);
 
 	__m512i w2 = _mm512_load_epi64(w+16);
 	tmp1 = _mm512_add_epi64(_mm512_mul_epu32(zmm_a0H, zmm_b03),
-							_mm512_mul_epu32(zmm_a0L, zmm_b0b));
+	                        _mm512_mul_epu32(zmm_a0L, zmm_b0b));
 	w2 = _mm512_add_epi64(w2, tmp1);
 	_mm512_store_epi64(w+16, w2);
 
 	__m512i v3 = _mm512_load_epi64(v+32);
 	tmp1 = _mm512_add_epi64(_mm512_mul_epu32(zmm_a0H, zmm_b0a),
-							_mm512_mul_epu32(zmm_a1L, zmm_b02));
+	                        _mm512_mul_epu32(zmm_a1L, zmm_b02));
 	v3 = _mm512_add_epi64(v3, _mm512_mul_epu32(zmm_a0L, zmm_b12));
 	v3 = _mm512_add_epi64(v3, tmp1);
 	_mm512_store_epi64(v+32, v3);
 
 	__m512i w3 = _mm512_load_epi64(w+32);
 	tmp1 = _mm512_add_epi64(_mm512_mul_epu32(zmm_a0H, zmm_b0b),
-							_mm512_mul_epu32(zmm_a1L, zmm_b03));
+	                        _mm512_mul_epu32(zmm_a1L, zmm_b03));
 	w3 = _mm512_add_epi64(w3, _mm512_mul_epu32(zmm_a0L, zmm_b13));
 	w3 = _mm512_add_epi64(w3, tmp1);
 	_mm512_store_epi64(w+32, w3);
 
 	__m512i v4 = _mm512_load_epi64(v+48);
 	tmp1 = _mm512_add_epi64(_mm512_mul_epu32(zmm_a1H, zmm_b02),
-							_mm512_mul_epu32(zmm_a1L, zmm_b0a));
+	                        _mm512_mul_epu32(zmm_a1L, zmm_b0a));
 	tmp2 = _mm512_add_epi64(_mm512_mul_epu32(zmm_a0H, zmm_b12),
-							_mm512_mul_epu32(zmm_a0L, zmm_b1a));
+	                        _mm512_mul_epu32(zmm_a0L, zmm_b1a));
 	v4 = _mm512_add_epi64(v4, tmp1);
 	v4 = _mm512_add_epi64(v4, tmp2);
 	_mm512_store_epi64(v+48, v4);
 
 	__m512i w4 = _mm512_load_epi64(w+48);
 	tmp1 = _mm512_add_epi64(_mm512_mul_epu32(zmm_a1H, zmm_b03),
-							_mm512_mul_epu32(zmm_a1L, zmm_b0b));
+	                        _mm512_mul_epu32(zmm_a1L, zmm_b0b));
 	tmp2 = _mm512_add_epi64(_mm512_mul_epu32(zmm_a0H, zmm_b13),
-							_mm512_mul_epu32(zmm_a0L, zmm_b1b));
+	                        _mm512_mul_epu32(zmm_a0L, zmm_b1b));
 	w4 = _mm512_add_epi64(w4, tmp1);
 	w4 = _mm512_add_epi64(w4, tmp2);
 	_mm512_store_epi64(w+48, w4);
 
 	__m512i v5 = _mm512_load_epi64(v+64);
 	tmp1 = _mm512_add_epi64(_mm512_mul_epu32(zmm_a0H, zmm_b1a),
-							_mm512_mul_epu32(zmm_a1L, zmm_b12));
+	                        _mm512_mul_epu32(zmm_a1L, zmm_b12));
 	v5 = _mm512_add_epi64(v5, _mm512_mul_epu32(zmm_a1H, zmm_b0a));
 	v5 = _mm512_add_epi64(v5, tmp1);
 	_mm512_store_epi64(v+64, v5);
 
 	__m512i w5 = _mm512_load_epi64(w+64);
 	tmp1 = _mm512_add_epi64(_mm512_mul_epu32(zmm_a0H, zmm_b1b),
-							_mm512_mul_epu32(zmm_a1L, zmm_b13));
+	                        _mm512_mul_epu32(zmm_a1L, zmm_b13));
 	w5 = _mm512_add_epi64(w5, _mm512_mul_epu32(zmm_a1H, zmm_b0b));
 	w5 = _mm512_add_epi64(w5, tmp1);
 	_mm512_store_epi64(w+64, w5);
 
 	__m512i v6 = _mm512_load_epi64(v+80);
 	tmp1 = _mm512_add_epi64(_mm512_mul_epu32(zmm_a1H, zmm_b12),
-							_mm512_mul_epu32(zmm_a1L, zmm_b1a));
+	                        _mm512_mul_epu32(zmm_a1L, zmm_b1a));
 	v6 = _mm512_add_epi64(v6, tmp1);
 	_mm512_store_epi64(v+80, v6);
 
 	__m512i w6 = _mm512_load_epi64(w+80);
 	tmp1 = _mm512_add_epi64(_mm512_mul_epu32(zmm_a1H, zmm_b13),
-							_mm512_mul_epu32(zmm_a1L, zmm_b1b));
+	                        _mm512_mul_epu32(zmm_a1L, zmm_b1b));
 	w6 = _mm512_add_epi64(w6, tmp1);
 	_mm512_store_epi64(w+80, w6);
 
@@ -262,71 +262,71 @@ void multiply_outer(unsigned int* a, unsigned int* b, unsigned int* t, unsigned 
 
 	__m512i p2 = _mm512_load_epi64(p+16);
 	tmp1 = _mm512_add_epi64(_mm512_mul_epu32(zmm_a0H, zmm_b04),
-							_mm512_mul_epu32(zmm_a0L, zmm_b0c));
+	                        _mm512_mul_epu32(zmm_a0L, zmm_b0c));
 	p2 = _mm512_add_epi64(p2, tmp1);
 	_mm512_store_epi64(p+16, p2);
 
 	__m512i q2 = _mm512_load_epi64(q+16);
 	tmp1 = _mm512_add_epi64(_mm512_mul_epu32(zmm_a0H, zmm_b05),
-							_mm512_mul_epu32(zmm_a0L, zmm_b0d));
+	                        _mm512_mul_epu32(zmm_a0L, zmm_b0d));
 	q2 = _mm512_add_epi64(q2, tmp1);
 	_mm512_store_epi64(q+16, q2);
 
 	__m512i p3 = _mm512_load_epi64(p+32);
 	tmp1 = _mm512_add_epi64(_mm512_mul_epu32(zmm_a0H, zmm_b0c),
-							_mm512_mul_epu32(zmm_a1L, zmm_b04));
+	                        _mm512_mul_epu32(zmm_a1L, zmm_b04));
 	p3 = _mm512_add_epi64(p3, _mm512_mul_epu32(zmm_a0L, zmm_b14));
 	p3 = _mm512_add_epi64(p3, tmp1);
 	_mm512_store_epi64(p+32, p3);
 
 	__m512i q3 = _mm512_load_epi64(q+32);
 	tmp1 = _mm512_add_epi64(_mm512_mul_epu32(zmm_a0H, zmm_b0d),
-							_mm512_mul_epu32(zmm_a1L, zmm_b05));
+	                        _mm512_mul_epu32(zmm_a1L, zmm_b05));
 	q3 = _mm512_add_epi64(q3, _mm512_mul_epu32(zmm_a0L, zmm_b15));
 	q3 = _mm512_add_epi64(q3, tmp1);
 	_mm512_store_epi64(q+32, q3);
 
 	__m512i p4 = _mm512_load_epi64(p+48);
 	tmp1 = _mm512_add_epi64(_mm512_mul_epu32(zmm_a1H, zmm_b04),
-							_mm512_mul_epu32(zmm_a1L, zmm_b0c));
+	                        _mm512_mul_epu32(zmm_a1L, zmm_b0c));
 	tmp2 = _mm512_add_epi64(_mm512_mul_epu32(zmm_a0H, zmm_b14),
-							_mm512_mul_epu32(zmm_a0L, zmm_b1c));
+	                        _mm512_mul_epu32(zmm_a0L, zmm_b1c));
 	p4 = _mm512_add_epi64(p4, tmp1);
 	p4 = _mm512_add_epi64(p4, tmp2);
 	_mm512_store_epi64(p+48, p4);
 
 	__m512i q4 = _mm512_load_epi64(q+48);
 	tmp1 = _mm512_add_epi64(_mm512_mul_epu32(zmm_a1H, zmm_b05),
-							_mm512_mul_epu32(zmm_a1L, zmm_b0d));
+	                        _mm512_mul_epu32(zmm_a1L, zmm_b0d));
 	tmp2 = _mm512_add_epi64(_mm512_mul_epu32(zmm_a0H, zmm_b15),
-							_mm512_mul_epu32(zmm_a0L, zmm_b1d));
+	                        _mm512_mul_epu32(zmm_a0L, zmm_b1d));
 	q4 = _mm512_add_epi64(q4, tmp1);
 	q4 = _mm512_add_epi64(q4, tmp2);
 	_mm512_store_epi64(q+48, q4);
 
 	__m512i p5 = _mm512_load_epi64(p+64);
 	tmp1 = _mm512_add_epi64(_mm512_mul_epu32(zmm_a0H, zmm_b1c),
-							_mm512_mul_epu32(zmm_a1L, zmm_b14));
+	                        _mm512_mul_epu32(zmm_a1L, zmm_b14));
 	p5 = _mm512_add_epi64(p5, _mm512_mul_epu32(zmm_a1H, zmm_b0c));
 	p5 = _mm512_add_epi64(p5, tmp1);
 	_mm512_store_epi64(p+64, p5);
 
 	__m512i q5 = _mm512_load_epi64(q+64);
 	tmp1 = _mm512_add_epi64(_mm512_mul_epu32(zmm_a0H, zmm_b1d),
-							_mm512_mul_epu32(zmm_a1L, zmm_b15));
+	                        _mm512_mul_epu32(zmm_a1L, zmm_b15));
 	q5 = _mm512_add_epi64(q5, _mm512_mul_epu32(zmm_a1H, zmm_b0d));
 	q5 = _mm512_add_epi64(q5, tmp1);
 	_mm512_store_epi64(q+64, q5);
 
 	__m512i p6 = _mm512_load_epi64(p+80);
 	tmp1 = _mm512_add_epi64(_mm512_mul_epu32(zmm_a1H, zmm_b14),
-							_mm512_mul_epu32(zmm_a1L, zmm_b1c));
+	                        _mm512_mul_epu32(zmm_a1L, zmm_b1c));
 	p6 = _mm512_add_epi64(p6, tmp1);
 	_mm512_store_epi64(p+80, p6);
 
 	__m512i q6 = _mm512_load_epi64(q+80);
 	tmp1 = _mm512_add_epi64(_mm512_mul_epu32(zmm_a1H, zmm_b15),
-							_mm512_mul_epu32(zmm_a1L, zmm_b1d));
+	                        _mm512_mul_epu32(zmm_a1L, zmm_b1d));
 	q6 = _mm512_add_epi64(q6, tmp1);
 	_mm512_store_epi64(q+80, q6);
 
@@ -360,71 +360,71 @@ void multiply_outer(unsigned int* a, unsigned int* b, unsigned int* t, unsigned 
 
 	__m512i r2 = _mm512_load_epi64(r+16);
 	tmp1 = _mm512_add_epi64(_mm512_mul_epu32(zmm_a0H, zmm_b06),
-							_mm512_mul_epu32(zmm_a0L, zmm_b0e));
+	                        _mm512_mul_epu32(zmm_a0L, zmm_b0e));
 	r2 = _mm512_add_epi64(r2, tmp1);
 	_mm512_store_epi64(r+16, r2);
 
 	__m512i s2 = _mm512_load_epi64(s+16);
 	tmp1 = _mm512_add_epi64(_mm512_mul_epu32(zmm_a0H, zmm_b07),
-							_mm512_mul_epu32(zmm_a0L, zmm_b0f));
+	                        _mm512_mul_epu32(zmm_a0L, zmm_b0f));
 	s2 = _mm512_add_epi64(s2, tmp1);
 	_mm512_store_epi64(s+16, s2);
 
 	__m512i r3 = _mm512_load_epi64(r+32);
 	tmp1 = _mm512_add_epi64(_mm512_mul_epu32(zmm_a0H, zmm_b0e),
-							_mm512_mul_epu32(zmm_a1L, zmm_b06));
+	                        _mm512_mul_epu32(zmm_a1L, zmm_b06));
 	r3 = _mm512_add_epi64(r3, _mm512_mul_epu32(zmm_a0L, zmm_b16));
 	r3 = _mm512_add_epi64(r3, tmp1);
 	_mm512_store_epi64(r+32, r3);
 
 	__m512i s3 = _mm512_load_epi64(s+32);
 	tmp1 = _mm512_add_epi64(_mm512_mul_epu32(zmm_a0H, zmm_b0f),
-							_mm512_mul_epu32(zmm_a1L, zmm_b07));
+	                        _mm512_mul_epu32(zmm_a1L, zmm_b07));
 	s3 = _mm512_add_epi64(s3, _mm512_mul_epu32(zmm_a0L, zmm_b17));
 	s3 = _mm512_add_epi64(s3, tmp1);
 	_mm512_store_epi64(s+32, s3);
 
 	__m512i r4 = _mm512_load_epi64(r+48);
 	tmp1 = _mm512_add_epi64(_mm512_mul_epu32(zmm_a1H, zmm_b06),
-							_mm512_mul_epu32(zmm_a1L, zmm_b0e));
+	                        _mm512_mul_epu32(zmm_a1L, zmm_b0e));
 	tmp2 = _mm512_add_epi64(_mm512_mul_epu32(zmm_a0H, zmm_b16),
-							_mm512_mul_epu32(zmm_a0L, zmm_b1e));
+	                        _mm512_mul_epu32(zmm_a0L, zmm_b1e));
 	r4 = _mm512_add_epi64(r4, tmp1);
 	r4 = _mm512_add_epi64(r4, tmp2);
 	_mm512_store_epi64(r+48, r4);
 
 	__m512i s4 = _mm512_load_epi64(s+48);
 	tmp1 = _mm512_add_epi64(_mm512_mul_epu32(zmm_a1H, zmm_b07),
-							_mm512_mul_epu32(zmm_a1L, zmm_b0f));
+	                        _mm512_mul_epu32(zmm_a1L, zmm_b0f));
 	tmp2 = _mm512_add_epi64(_mm512_mul_epu32(zmm_a0H, zmm_b17),
-							_mm512_mul_epu32(zmm_a0L, zmm_b1f));
+	                        _mm512_mul_epu32(zmm_a0L, zmm_b1f));
 	s4 = _mm512_add_epi64(s4, tmp1);
 	s4 = _mm512_add_epi64(s4, tmp2);
 	_mm512_store_epi64(s+48, s4);
 
 	__m512i r5 = _mm512_load_epi64(r+64);
 	tmp1 = _mm512_add_epi64(_mm512_mul_epu32(zmm_a0H, zmm_b1e),
-							_mm512_mul_epu32(zmm_a1L, zmm_b16));
+	                        _mm512_mul_epu32(zmm_a1L, zmm_b16));
 	r5 = _mm512_add_epi64(r5, _mm512_mul_epu32(zmm_a1H, zmm_b0e));
 	r5 = _mm512_add_epi64(r5, tmp1);
 	_mm512_store_epi64(r+64, r5);
 
 	__m512i s5 = _mm512_load_epi64(s+64);
 	tmp1 = _mm512_add_epi64(_mm512_mul_epu32(zmm_a0H, zmm_b1f),
-							_mm512_mul_epu32(zmm_a1L, zmm_b17));
+	                        _mm512_mul_epu32(zmm_a1L, zmm_b17));
 	s5 = _mm512_add_epi64(s5, _mm512_mul_epu32(zmm_a1H, zmm_b0f));
 	s5 = _mm512_add_epi64(s5, tmp1);
 	_mm512_store_epi64(s+64, s5);
 
 	__m512i r6 = _mm512_load_epi64(r+80);
 	tmp1 = _mm512_add_epi64(_mm512_mul_epu32(zmm_a1H, zmm_b16),
-							_mm512_mul_epu32(zmm_a1L, zmm_b1e));
+	                        _mm512_mul_epu32(zmm_a1L, zmm_b1e));
 	r6 = _mm512_add_epi64(r6, tmp1);
 	_mm512_store_epi64(r+80, r6);
 
 	__m512i s6 = _mm512_load_epi64(s+80);
 	tmp1 = _mm512_add_epi64(_mm512_mul_epu32(zmm_a1H, zmm_b17),
-							_mm512_mul_epu32(zmm_a1L, zmm_b1f));
+	                        _mm512_mul_epu32(zmm_a1L, zmm_b1f));
 	s6 = _mm512_add_epi64(s6, tmp1);
 	_mm512_store_epi64(s+80, s6);
 

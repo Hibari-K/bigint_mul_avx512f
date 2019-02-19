@@ -1,12 +1,7 @@
 #include<stdio.h>
 #include<stdlib.h>
-#include<time.h>
-#include<sys/time.h>
-
 #include<hbwmalloc.h>
-
 #include<immintrin.h>
-
 #include "zmm_mul.h"
 
 
@@ -14,7 +9,6 @@
 void multiply_outer(unsigned int* a, unsigned int* b, unsigned int* t, unsigned int* u, unsigned int* v, unsigned int* w, unsigned int* p, unsigned int* q, unsigned int* r, unsigned int* s);
 void calc_carry(unsigned int* t, unsigned int* u, unsigned int* v, unsigned int* w, unsigned int* p, unsigned int* q, unsigned int* r, unsigned int* s, int digitsTimesTwo);
 void calc_carry_29bit(unsigned int* t, unsigned int* u, unsigned int* v, unsigned int* w, unsigned int* p, unsigned int* q, unsigned int* r, unsigned int* s, int digitsTimesTwo);
-void cloop(unsigned int* t, unsigned int* u, unsigned int* v, unsigned int* w, unsigned int* p, unsigned int* q, unsigned int* r, unsigned int* s, int digitsTimesTwo);
 
 void combine_28bit(unsigned int* data, unsigned int* result, int digits);
 void split_28bit(unsigned int* data, unsigned int* result, int digits);
@@ -22,22 +16,11 @@ void split_28bit(unsigned int* data, unsigned int* result, int digits);
 void combine_29bit(unsigned int* data, unsigned int* result, int digits);
 void split_29bit(unsigned int* data, unsigned int* result, int digits);
 
-void ScalarMultiply(unsigned int* A, unsigned int* B, unsigned int* T, int loopa, int loopb);
 
 
-extern double total_k;
-extern double total_s;
-extern double total_c;
-extern double total_a;
-extern double total_o;
-
-
-
-//void multiply(unsigned int* data_a, unsigned int* data_b, unsigned int* t){
 void multiply(zmm_t data_a, zmm_t data_b, zmm_t t){
 
-
-	
+	// this function is a wrapper to ready for mul_kernel
 
    /*
 	 It is not desirable to use scalar operation,
@@ -76,48 +59,7 @@ void multiply(zmm_t data_a, zmm_t data_b, zmm_t t){
 	 */
 
 
-	
-
-/*
-	static unsigned int a[500];
-	static unsigned int b[500];
-	static unsigned int t_tmp[1000];
-	static unsigned int u[1000];
-	static unsigned int v[1000];
-	static unsigned int w[1000];
-	static unsigned int p[1000];
-	static unsigned int q[1000];
-	static unsigned int r[1000];
-	static unsigned int s[1000];
-*/
-
-	struct timeval sk, ss, sc, sa, so;
-	struct timeval ek, es, ec, ea, eo;
-	
-
-	gettimeofday(&so, NULL);
-
 	int a_array_len, b_array_len; 
-/*
-	unsigned long* tmp_a = (unsigned long*)data_a;
-	unsigned long* tmp_b = (unsigned long*)data_b;
-	
-	int flag = 0;
-	for(a_array_len=112; !flag; a_array_len-=2){
-
-		flag  = (tmp_a[a_array_len] | tmp_b[a_array_len]);
-		flag |= (tmp_a[a_array_len-1] | tmp_b[a_array_len-1]);	
-	}
-
-	a_array_len+=2;
-	
-	for(b_array_len=a_array_len; tmp_b[b_array_len]==0; b_array_len--);
-	for(; tmp_a[a_array_len]==0; a_array_len--);
-	a_array_len = (a_array_len+1)<<1;
-	b_array_len = (b_array_len+1)<<1;
-*/	
-
-
 	int a_bitsize, b_bitsize, t_bitsize;
 	int a_digits, b_digits, t_digits;
 	int digitsTimesTwo;
@@ -133,17 +75,7 @@ void multiply(zmm_t data_a, zmm_t data_b, zmm_t t){
 
 		a_digits = b_digits = t_digits = (a_bitsize-1)/28 + 1;
 		
-		/*
-		if(t_bitsize >= 1792 || t_bitsize <= 512){
-			a_digits = b_digits = t_digits = (a_bitsize-1)/28 + 1;
-		}
-		else{
-			a_digits = b_digits = t_digits = (a_bitsize-1)/29 + 1;
-		}	
-		*/
-
 		digitsTimesTwo = t_digits*2+1;
-		
 	}
 	else{
 
@@ -157,67 +89,56 @@ void multiply(zmm_t data_a, zmm_t data_b, zmm_t t){
 			exit(1);
 		}
 
-	
-		if(t_bitsize >= 1792 || t_bitsize <= 512){
-			a_digits = (a_bitsize-1)/28 + 1;
-			b_digits = (b_bitsize-1)/28 + 1;
-		}
-		else{
-			a_digits = (a_bitsize-1)/29 + 1;
-			b_digits = (b_bitsize-1)/29 + 1;
-		}	
+		a_digits = (a_bitsize-1)/28 + 1;
+		b_digits = (b_bitsize-1)/28 + 1;
 
 		t_digits = (a_digits > b_digits) ? a_digits : b_digits;
 		digitsTimesTwo = t_digits*2+1;
 	}
 
 
-	gettimeofday(&eo, NULL);
-	total_o += (eo.tv_sec - so.tv_sec) + (eo.tv_usec - so.tv_usec)*1.0E-6;
-	
-	gettimeofday(&sa, NULL);
-
 	unsigned int *a, *b, *t_tmp, *u, *v, *w, *p, *q, *r, *s;
 
 	if(t_bitsize <= 179 * 32){
 
-	a = hbw_calloc((2*t_digits*10),sizeof(long));
-	b = a+(4*t_digits);
-	t_tmp = a+(8*t_digits);
-	u = a+(12*t_digits);
-	v = a+(16*t_digits);
-	w = a+(20*t_digits);
-	p = a+(24*t_digits);
-	q = a+(28*t_digits);
-	r = a+(32*t_digits);
-	s = a+(36*t_digits);
+		a = hbw_calloc((2*t_digits*10),sizeof(long));
+		b = a+(4*t_digits);
+		t_tmp = a+(8*t_digits);
+		u = a+(12*t_digits);
+		v = a+(16*t_digits);
+		w = a+(20*t_digits);
+		p = a+(24*t_digits);
+		q = a+(28*t_digits);
+		r = a+(32*t_digits);
+		s = a+(36*t_digits);
+
+		if(!a){
+			puts("malloc error");
+			exit(1);
+		}
 	}
 	else{
 
-	a = hbw_calloc((a_digits),sizeof(long));
-	b = hbw_calloc((b_digits),sizeof(long));
-	t_tmp = hbw_calloc((2*t_digits),sizeof(long));
+		a = hbw_calloc((a_digits),sizeof(long));
+		b = hbw_calloc((b_digits),sizeof(long));
+		t_tmp = hbw_calloc((2*t_digits),sizeof(long));
 
-	u = hbw_calloc((2*t_digits),sizeof(long));
-	v = hbw_calloc((2*t_digits),sizeof(long));
-	w = hbw_calloc((2*t_digits),sizeof(long));
+		u = hbw_calloc((2*t_digits),sizeof(long));
+		v = hbw_calloc((2*t_digits),sizeof(long));
+		w = hbw_calloc((2*t_digits),sizeof(long));
 
-	p = hbw_calloc((2*t_digits),sizeof(long));
-	q = hbw_calloc((2*t_digits),sizeof(long));
-	r = hbw_calloc((2*t_digits),sizeof(long));
-	s = hbw_calloc((2*t_digits),sizeof(long));
-
+		p = hbw_calloc((2*t_digits),sizeof(long));
+		q = hbw_calloc((2*t_digits),sizeof(long));
+		r = hbw_calloc((2*t_digits),sizeof(long));
+		s = hbw_calloc((2*t_digits),sizeof(long));
+	
+		if(!(a && b && t_tmp && u && v && w && p && q && r && s)){
+			puts("malloc error");
+			exit(1);
+		}
 	}
 	
 	
-	if(!(a && b && t_tmp && u && v && w && p && q && r && s)){
-		puts("malloc error");
-		exit(1);
-	}
-	
-	gettimeofday(&ea, NULL);
-	total_a += (ea.tv_sec - sa.tv_sec) + (ea.tv_usec - sa.tv_usec)*1.0E-6;
-
 	
 	
 	int i,j;
@@ -225,203 +146,56 @@ void multiply(zmm_t data_a, zmm_t data_b, zmm_t t){
 	int a_split, b_split, t_comb;
 
 	// scalar multiply few digits
-	// 58 = 1856 / 32
-	// 1856 = 29 * 64
 
-		a_split = a_bitsize / 56;
-		b_split = b_bitsize / 56;
-		t_comb = 2 * (t_bitsize / 56) + 2;
+	a_split = a_bitsize / 56;
+	b_split = b_bitsize / 56;
+	t_comb = 2 * (t_bitsize / 56) + 2;
 
-		gettimeofday(&ss, NULL);
+	// convert to reduced-radix representation
+	split_28bit(PTR(data_a), a, a_split);
+	split_28bit(PTR(data_b), b, b_split);
+
+	int plus = BITSIZE/448 * 16;
+	int offset;
+
+	for(i=0; i<b_digits; i+=plus){ 
+		for(j=0; j<a_digits; j+=plus){
 		
-		split_28bit(PTR(data_a), a, a_split);
-		split_28bit(PTR(data_b), b, b_split);
-	
-		gettimeofday(&es, NULL);
-		total_s += (es.tv_sec - ss.tv_sec) + (es.tv_usec - ss.tv_usec)*1.0E-6;
+			offset = (i + j) * 2;
 
-	
-		int plus = BITSIZE/448 * 16;
-		
-		gettimeofday(&sk, NULL);
-
-		int offset;
-
-		for(i=0; i<b_digits; i+=plus){ 
-			for(j=0; j<a_digits; j+=plus){
-			
-				offset = (i + j) * 2;
-
-				multiply_outer(a+j, b+i, t_tmp+offset, u+(offset), v+(offset), w+(offset), p+(offset), q+(offset), r+(offset), s+(offset));
-			}
+			multiply_outer(a+j, b+i, t_tmp+offset, u+(offset), v+(offset), w+(offset), p+(offset), q+(offset), r+(offset), s+(offset));
 		}
+	}
 
-		//Finally, we do the 29bit carry calculation
-		//and add the two result arrays
-		calc_carry(t_tmp, u, v, w, p, q, r, s, digitsTimesTwo);
+	//Finally, we do the 29bit carry calculation
+	//and add the two result arrays
+	calc_carry(t_tmp, u, v, w, p, q, r, s, digitsTimesTwo);
 
-		gettimeofday(&ek, NULL);
-		total_k += (ek.tv_sec - sk.tv_sec) + (ek.tv_usec - sk.tv_usec)*1.0E-6;
-
-
-		gettimeofday(&sc, NULL);
-		combine_28bit(t_tmp, PTR(t), t_comb);
-		gettimeofday(&ec, NULL);
-		total_c += (ec.tv_sec - sc.tv_sec) + (ec.tv_usec - sc.tv_usec)*1.0E-6;
-	
+	// convert back to normal representation
+	combine_28bit(t_tmp, PTR(t), t_comb);
 
 
-	//combine_28bit(t_tmp, t, t_comb);
-
-	gettimeofday(&sa, NULL);
 
 	hbw_free(a);
 
 	if(t_bitsize > 179*32){
-	hbw_free(b);
-	hbw_free(t_tmp);
-	hbw_free(u);
-	hbw_free(v);
-	hbw_free(w);
-	hbw_free(p);
-	hbw_free(q);
-	hbw_free(r);
-	hbw_free(s);
+		hbw_free(b);
+		hbw_free(t_tmp);
+		hbw_free(u);
+		hbw_free(v);
+		hbw_free(w);
+		hbw_free(p);
+		hbw_free(q);
+		hbw_free(r);
+		hbw_free(s);
 	}
-
-	gettimeofday(&ea, NULL);
-	total_a += (ea.tv_sec - sa.tv_sec) + (ea.tv_usec - sa.tv_usec)*1.0E-6;
-
-	//a = b = t_tmp = u = v = w = p = q = r = s = NULL;
-	
-
 }
 
 
 
 void calc_carry(unsigned int* t, unsigned int* u, unsigned int* v, unsigned int* w, unsigned int* p, unsigned int* q, unsigned int* r, unsigned int* s, int DIGITSTIMESTWO)
 {
-/*
-	  in this routine,
-	  mm7 : 0xfffffff
-	  mm6 : carry
-	  mm0 : t
-	  mm1 : u
-	  mm2 : v
-	  mm3 : w
-	 */
-/*
-	 __asm__ volatile(
-		"pxor %%mm6, %%mm6;"
-		"mov $0xfffffff, %%eax;"
-		"movd %%eax, %%mm7;"
-		//[0]
-		"movq (%0), %%mm0;"
-		"movq %%mm0, %%mm6;"
-		"pand %%mm7, %%mm0;"
-		"movd %%mm0, (%0);"
-		"psrlq $28, %%mm6;"
-		
-		"mov $1, %%rbx;"
-		//[1]
-		"movq (%0, %%rbx, 8), %%mm0;"
-		"movq -8(%1, %%rbx, 8), %%mm1;"
-		"paddq %%mm1, %%mm0;"
-		"paddq %%mm6, %%mm0;"
-		"movq %%mm0, %%mm6;"
-		"pand %%mm7, %%mm6;"
-		"movd %%mm6, (%0, %%rbx, 4);"
-		"psrlq $28, %%mm0;"
 	
-		"inc %%ebx;"
-		//[2]
-		"movq (%0, %%rbx, 8), %%mm6;"
-		"movq -8(%1, %%rbx, 8), %%mm1;"
-		"movq -16(%2, %%rbx, 8), %%mm2;"
-		"paddq %%mm1, %%mm6;"
-		"paddq %%mm2, %%mm6;"
-		"paddq %%mm0, %%mm6;"
-		"movq %%mm6, %%mm0;"
-		"pand %%mm7, %%mm0;"
-		"movd %%mm0, (%0, %%rbx, 4);"
-		"psrlq $28, %%mm6;"
-
-		"inc %%ebx;"
-		//[3]
-		"movq (%0, %%rbx, 8), %%mm0;"
-		"movq -8(%1, %%rbx, 8), %%mm1;"
-		"movq -16(%2, %%rbx, 8), %%mm2;"
-		"movq -24(%3, %%rbx, 8), %%mm3;"
-		"paddq %%mm6, %%mm0;"
-		"paddq %%mm1, %%mm0;"
-		"paddq %%mm2, %%mm0;"
-		"paddq %%mm3, %%mm0;"
-		"movq %%mm0, %%mm6;"
-		"pand %%mm7, %%mm6;"
-		"movd %%mm6, (%0, %%rbx, 4);"
-		"psrlq $28, %%mm0;"
-
-		"inc %%ebx;"
-		//[4]
-		"movq (%0, %%rbx, 8), %%mm6;"
-		"movq -8(%1, %%rbx, 8), %%mm1;"
-		"movq -16(%2, %%rbx, 8), %%mm2;"
-		"movq -24(%3, %%rbx, 8), %%mm3;"
-		"movq -32(%4, %%rbx, 8), %%mm4;"
-		"paddq %%mm0, %%mm6;"
-		"paddq %%mm1, %%mm6;"
-		"paddq %%mm2, %%mm6;"
-		"paddq %%mm3, %%mm6;"
-		"paddq %%mm4, %%mm6;"
-		"movq %%mm6, %%mm0;"
-		"pand %%mm7, %%mm0;"
-		"movd %%mm0, (%0, %%rbx, 4);"
-		"psrlq $28, %%mm6;"
-
-		"inc %%ebx;"
-		//[5]
-		"movq (%0, %%rbx, 8), %%mm0;"
-		"movq -8(%1, %%rbx, 8), %%mm1;"
-		"movq -16(%2, %%rbx, 8), %%mm2;"
-		"movq -24(%3, %%rbx, 8), %%mm3;"
-		"movq -32(%4, %%rbx, 8), %%mm4;"
-		"movq -40(%5, %%rbx, 8), %%mm5;"
-		"paddq %%mm6, %%mm0;"
-		"paddq %%mm1, %%mm0;"
-		"paddq %%mm2, %%mm0;"
-		"paddq %%mm3, %%mm0;"
-		"paddq %%mm4, %%mm0;"
-		"paddq %%mm5, %%mm0;"
-		"movq %%mm0, %%mm6;"
-		"pand %%mm7, %%mm6;"
-		"movd %%mm6, (%0, %%rbx, 4);"
-		"psrlq $28, %%mm0;"
-
-		"inc %%ebx;"
-		//[6]
-		"movq (%0, %%rbx, 8), %%mm6;"
-		"movq -8(%1, %%rbx, 8), %%mm1;"
-		"movq -16(%2, %%rbx, 8), %%mm2;"
-		"movq -24(%3, %%rbx, 8), %%mm3;"
-		"movq -32(%4, %%rbx, 8), %%mm4;"
-		"movq -40(%5, %%rbx, 8), %%mm5;"
-		"paddq %%mm0, %%mm6;"
-		"paddq %%mm1, %%mm6;"
-		"movq -48(%6, %%rbx, 8), %%mm1;" //r
-		"paddq %%mm2, %%mm6;"
-		"paddq %%mm3, %%mm6;"
-		"paddq %%mm4, %%mm6;"
-		"paddq %%mm5, %%mm6;"
-		"paddq %%mm1, %%mm6;" //r
-		"movq %%mm6, %%mm0;"
-		"pand %%mm7, %%mm0;"
-		"movd %%mm0, (%0, %%rbx, 4);"
-		"psrlq $28, %%mm6;"
-
-		::"r"(t), "r"(u), "r"(v), "r"(w), "r"(p), "r"(q), "r"(r)
-		:"%rax", "%rbx"
-	);
-*/
 	unsigned long* t_long = (unsigned long*) t;
 	unsigned long* u_long = (unsigned long*) u;
 	unsigned long* v_long = (unsigned long*) v;
@@ -470,7 +244,6 @@ void calc_carry(unsigned int* t, unsigned int* u, unsigned int* v, unsigned int*
 	tmp >>= 28;
 
 
-	//cloop(t, u, v, w, p, q, r, s, DIGITSTIMESTWO);
 
 	int i;
 	for(i=7; i<=DIGITSTIMESTWO; i+=2){
