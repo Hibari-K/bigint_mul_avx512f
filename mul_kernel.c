@@ -1,6 +1,6 @@
 #include<stdio.h>
 #include<stdlib.h>
-#include<hbwmalloc.h>
+//#include<hbwmalloc.h>
 #include<immintrin.h>
 
 #include "zmm_mul.h"

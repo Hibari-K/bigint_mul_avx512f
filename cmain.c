@@ -1,7 +1,9 @@
 #include<stdio.h>
 #include<stdlib.h>
+#include<time.h>
+#include<sys/time.h>
 
-#include<hbwmalloc.h>
+//#include<hbwmalloc.h>
 #include "zmm_mul.h"
 
 
@@ -19,9 +21,9 @@ int main(int argc, char** argv){
 	zmm_t a, b, t;
 
 	// initialize
-	PTR(a) = hbw_calloc((896), sizeof(long));
-	PTR(b) = hbw_calloc((896), sizeof(long));
-	PTR(t) = hbw_calloc((1792),sizeof(long));
+	PTR(a) = calloc((896), sizeof(long));
+	PTR(b) = calloc((896), sizeof(long));
+	PTR(t) = calloc((1792),sizeof(long));
 
 	
     if(!(PTR(a) && PTR(b) && PTR(t))){
@@ -59,9 +61,9 @@ int main(int argc, char** argv){
 	fclose(result);
 
 
-	hbw_free(PTR(a));
-	hbw_free(PTR(b));
-	hbw_free(PTR(t));
+	free(PTR(a));
+	free(PTR(b));
+	free(PTR(t));
     
     return 0;
 }

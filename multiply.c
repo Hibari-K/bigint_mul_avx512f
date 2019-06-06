@@ -1,6 +1,6 @@
 #include<stdio.h>
 #include<stdlib.h>
-#include<hbwmalloc.h>
+//#include<hbwmalloc.h>
 #include<immintrin.h>
 #include "zmm_mul.h"
 
@@ -12,9 +12,6 @@ void calc_carry_29bit(unsigned int* t, unsigned int* u, unsigned int* v, unsigne
 
 void combine_28bit(unsigned int* data, unsigned int* result, int digits);
 void split_28bit(unsigned int* data, unsigned int* result, int digits);
-
-void combine_29bit(unsigned int* data, unsigned int* result, int digits);
-void split_29bit(unsigned int* data, unsigned int* result, int digits);
 
 
 
@@ -101,7 +98,8 @@ void multiply(zmm_t data_a, zmm_t data_b, zmm_t t){
 
 	if(t_bitsize <= 179 * 32){
 
-		a = hbw_calloc((2*t_digits*10),sizeof(long));
+		//a = hbw_calloc((2*t_digits*10),sizeof(long));
+		a = calloc((2*t_digits*10),sizeof(long));
 		b = a+(4*t_digits);
 		t_tmp = a+(8*t_digits);
 		u = a+(12*t_digits);
@@ -119,6 +117,7 @@ void multiply(zmm_t data_a, zmm_t data_b, zmm_t t){
 	}
 	else{
 
+/*
 		a = hbw_calloc((a_digits),sizeof(long));
 		b = hbw_calloc((b_digits),sizeof(long));
 		t_tmp = hbw_calloc((2*t_digits),sizeof(long));
@@ -131,7 +130,20 @@ void multiply(zmm_t data_a, zmm_t data_b, zmm_t t){
 		q = hbw_calloc((2*t_digits),sizeof(long));
 		r = hbw_calloc((2*t_digits),sizeof(long));
 		s = hbw_calloc((2*t_digits),sizeof(long));
-	
+*/	
+		a = calloc((a_digits),sizeof(long));
+		b = calloc((b_digits),sizeof(long));
+		t_tmp = calloc((2*t_digits),sizeof(long));
+
+		u = calloc((2*t_digits),sizeof(long));
+		v = calloc((2*t_digits),sizeof(long));
+		w = calloc((2*t_digits),sizeof(long));
+
+		p = calloc((2*t_digits),sizeof(long));
+		q = calloc((2*t_digits),sizeof(long));
+		r = calloc((2*t_digits),sizeof(long));
+		s = calloc((2*t_digits),sizeof(long));
+
 		if(!(a && b && t_tmp && u && v && w && p && q && r && s)){
 			puts("malloc error");
 			exit(1);
@@ -155,7 +167,7 @@ void multiply(zmm_t data_a, zmm_t data_b, zmm_t t){
 	split_28bit(PTR(data_a), a, a_split);
 	split_28bit(PTR(data_b), b, b_split);
 
-	int plus = BITSIZE/448 * 16;
+	int plus = a_bitsize/448 * 16;
 	int offset;
 
 	for(i=0; i<b_digits; i+=plus){ 
@@ -176,18 +188,20 @@ void multiply(zmm_t data_a, zmm_t data_b, zmm_t t){
 
 
 
-	hbw_free(a);
+	//hbw_free(a);
+	free(a);
 
+    // if you use Xeon Phi processor, change hbw_free() from free()
 	if(t_bitsize > 179*32){
-		hbw_free(b);
-		hbw_free(t_tmp);
-		hbw_free(u);
-		hbw_free(v);
-		hbw_free(w);
-		hbw_free(p);
-		hbw_free(q);
-		hbw_free(r);
-		hbw_free(s);
+		free(b);
+		free(t_tmp);
+		free(u);
+		free(v);
+		free(w);
+		free(p);
+		free(q);
+		free(r);
+		free(s);
 	}
 }
 
